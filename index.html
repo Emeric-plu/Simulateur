@@ -244,6 +244,19 @@
   .fichePiste h3 small.etiquette { background: var(--jaune); color: var(--encre); }
   .fichePiste p { margin: 0; font-size: 14px; color: var(--gris); line-height: 1.45; flex: 1; }
   .fichePiste .ligne { margin: 4px 0 0; }
+  .generateur { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(300px, 1.15fr); gap: 22px; padding: 18px; margin-bottom: 26px; align-items: start; }
+  .generateur h2 { margin: 0 0 4px; font-family: var(--titre); font-size: 26px; font-style: italic; font-weight: 800; }
+  .genReglages { display: flex; flex-direction: column; gap: 12px; }
+  .genLigne { display: flex; flex-direction: column; gap: 6px; }
+  .genLigne { align-items: flex-start; }
+  .genLigne > span { font-size: 13px; font-weight: 600; color: var(--gris); }
+  .genLigne .bascule { flex-wrap: wrap; }
+  .genLegende { font-size: 13px; line-height: 1.45; }
+  .genApercu .fichePiste { height: 100%; }
+  .genApercu .fichePiste.nouvelle { animation: tirage .35s ease-out; }
+  @keyframes tirage { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .genApercu .fichePiste.nouvelle { animation: none; } }
+  @media (max-width: 820px) { .generateur { grid-template-columns: 1fr; } }
   .sectionPistes { margin: 30px 0 10px; font-family: var(--titre); font-size: 24px; }
   .enregistrer { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--sol); border: 1px solid var(--trait-fort);
     border-radius: var(--r); padding: 10px; }
@@ -473,6 +486,10 @@
   #cameraBoutons button + button { border-left: 1px solid rgba(255,255,255,.08); }
   #cameraBoutons button:hover { color: var(--encre); background: rgba(255,255,255,.06); }
   #cameraBoutons button.actif { background: var(--jaune); color: #15191a; }
+  #horloge, #horlogeTemps { white-space: nowrap; }
+  #horlogeTemps { min-width: 4.2ch; text-align: right; }
+  #zone canvas[hidden] { display: none; }
+  #cv3d { display: block; }
   #cameraBoutons [data-zoom] { font-size: 18px; width: 34px; justify-content: center; color: var(--encre); }
   body.edition-active #cameraBoutons { display: none; }
   canvas.main { cursor: grabbing; }
@@ -605,6 +622,10 @@
   .statut.depart i { background: #ff3b28; }
   .statut.edition { color: var(--jaune); border-color: rgba(246,201,21,.5); background: rgba(246,201,21,.08); }
   .statut.edition i { background: var(--jaune); }
+  #statutPartage { margin-left: auto; align-self: center; }
+  .statut { white-space: nowrap; }
+  .statut.partage span { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header h1 { white-space: nowrap; }
   .statut.partage.enLigne { color: #8be3a3; border-color: rgba(47,191,91,.45); }
   .statut.partage.enLigne i { background: #3fd06a; }
   .statut.partage.lecture { color: #f2c14e; border-color: rgba(242,193,78,.45); }
@@ -812,9 +833,10 @@
     </div>
     <div class="separateur seulPiste"></div>
     <button id="btEdition" class="seulPiste">Modifier la piste</button>
+    <span id="statutPartage" class="statut partage" hidden><i></i><span></span></span>
   </div>
   </div>
-  <div id="horloge"><button id="btTheme" class="btTheme" aria-label="Passer en mode clair" title="Mode clair ou sombre"></button><span id="statut" class="statut"><i></i><span id="statutTexte">À l'arrêt</span></span><span id="statutPartage" class="statut partage" hidden><i></i><span></span></span><span id="horlogeTemps">0,0 s</span></div>
+  <div id="horloge"><button id="btTheme" class="btTheme" aria-label="Passer en mode clair" title="Mode clair ou sombre"></button><span id="statut" class="statut"><i></i><span id="statutTexte">À l'arrêt</span></span><span id="horlogeTemps">0,0 s</span></div>
 </header>
 
 <main id="pageAccueil" hidden>
@@ -884,6 +906,7 @@
     <div id="cameraBoutons" role="group" aria-label="Caméra">
       <button data-cam="ensemble" data-ic="ensemble" class="actif" title="Toute la piste (touche V)">Vue d'ensemble</button>
       <button data-cam="suivre" data-ic="cible" title="La caméra suit la voiture choisie (touche C)">Suivre la voiture</button>
+      <button data-cam="3d" data-ic="cube" title="Vue 3D derrière la voiture choisie (touche 3). Molette ou − / + : distance ; tout près ou double-clic : vue cockpit">Vue 3D</button>
       <button data-zoom="-1" data-ic="moins" aria-label="Dézoomer" title="Dézoomer (molette)"></button>
       <button data-zoom="1" data-ic="plus" aria-label="Zoomer" title="Zoomer (molette)"></button>
     </div>
@@ -949,6 +972,24 @@
 </main>
 
 <main id="pagePistes" hidden>
+  <section class="bloc generateur">
+    <div class="genReglages">
+      <h2>Piste aléatoire</h2>
+      <p class="aide">Une nouvelle piste à chaque tirage, pour vérifier qu'un algorithme ne marche pas seulement sur une piste qu'il connaît par cœur.</p>
+      <div class="genLigne"><span>Longueur</span>
+        <div class="bascule" id="genLongueur" role="group" aria-label="Longueur de la piste">
+          <button data-v="30">30 m</button><button data-v="60" class="actif">60 m</button><button data-v="100">100 m</button><button data-v="180">180 m</button>
+        </div></div>
+      <div class="genLigne"><span>Difficulté</span>
+        <div class="bascule" id="genNiveau" role="group" aria-label="Difficulté">
+          <button data-v="Facile">Facile</button><button data-v="Moyen" class="actif">Moyen</button><button data-v="Difficile">Difficile</button><button data-v="Extrême">Extrême</button>
+        </div></div>
+      <p class="aide genLegende">Facile : grandes courbes. Moyen : virages tous les 3 m et quelques plots. Difficile : virages tous les 2 m, plots et murs. Extrême : la même chose, avec beaucoup de murs.</p>
+      <div class="ligne"><button id="btGenerer" class="principal">Tirer une autre piste</button></div>
+    </div>
+    <div id="genApercu" class="genApercu"></div>
+  </section>
+
   <div class="introPistes">
     <h2>Choisir une piste</h2>
     <p class="aide">« Utiliser » charge la piste et replace les voitures sur la ligne de départ. « Modifier » l'ouvre dans l'éditeur.</p>
@@ -1092,6 +1133,7 @@ const IC = {
   soleil: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
   lune: '<svg class="ic" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
   ensemble: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  cube: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
   cible: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
   moins: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
   lidar: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="17" r="2" fill="currentColor"/><path d="M7.8 12.8a6 6 0 0 1 8.4 0M4.9 9.9a10 10 0 0 1 14.2 0"/></svg>',
@@ -1565,6 +1607,95 @@ function conduiteReactive(st, api, t, vmax) {
   api.commander(vit, dir);
 }
 
+// Demi-tour de la violette (copie du demi-tour commun, avec deux sécurités en plus) :
+// si un côté ne mène à rien (heurts à répétition sans que le cap tourne), on essaie l'autre côté ;
+// et si le demi-tour dure plus de 8 s, on l'abandonne 3 s pour se dégager en conduite normale avant de réessayer.
+function demiTourPrudent(st, api, t) {
+  if (api.temps < (st.dtPause || -1)) return false;
+  if (!st.dt) {
+    const gauche = secteur(t, 30, 90) > secteur(t, -90, -30);
+    st.dt = { sens: gauche ? 1 : -1, avant: true, fin: api.temps + 1.0, ok: 0, debut: api.temps, cap: api.cap ?? null, heurts: 0 };
+  }
+  const d = st.dt;
+  d.ok = !api.sensInverse && mini(t, -15, 15) > 700 ? d.ok + 1 : 0;
+  if (d.ok > 8) { st.dt = null; return false; }
+  if (api.temps - d.debut > 8) { st.dt = null; st.dtPause = api.temps + 3; return false; }
+  if (d.avant) {
+    if (api.temps > d.fin || mini(t, -25, 25) < 280) {
+      if (mini(t, -25, 25) < 280 && api.temps < d.fin - 0.7) { if (++d.heurts >= 3) { d.sens = -d.sens; d.heurts = 0; } }
+      d.avant = false; d.fin = api.temps + 1.0;
+    } else { api.commander(0.7, 16 * d.sens); return true; }
+  }
+  if (api.temps > d.fin || (api.ultrason < 0.15)) { d.avant = true; d.fin = api.temps + 1.2; api.commander(0.7, 16 * d.sens); return true; }
+  api.commander(-0.7, -16 * d.sens);
+  return true;
+}
+// Conduite de la violette pendant la reconnaissance et en secours : la conduite réactive ci-dessus,
+// plus un « suivi de passage » quand un obstacle bouche la direction choisie (mur posé en travers, plot) :
+// on cherche la direction où un couloir de la largeur de la voiture est libre le plus loin.
+function conduitePrudente(st, api, t, vmax) {
+  if (api.sensInverse || st.dt) { if (demiTourPrudent(st, api, t)) return; }
+  if (api.temps < (st.reculFin || -1)) {
+    if (api.ultrason < 0.15) st.reculFin = -1;
+    else { api.commander(-1.0, -st.reculDir); return; }
+  }
+  const devant = mini(t, -12, 12);
+  let dir = 0.03 * (secteur(t, 30, 75) - secteur(t, -75, -30));
+  if (mini(t, 20, 60) < 250) dir -= 8;
+  if (mini(t, -60, -20) < 250) dir += 8;
+  let vit = 0.7 + (vmax - 0.7) * clamp((devant - 500) / 1500, 0, 1);
+  vit *= 1 - 0.4 * Math.min(Math.abs(dir), MAX_ANGLE) / MAX_ANGLE;
+  // couloir libre dans la direction phi (degrés) : distance avant le premier point lidar à moins de 17 cm de l'axe
+  const pts = [];
+  for (let a = -100; a <= 100; a++) { const d = t[mod(a, 360)] / 1000; if (d > 0.05 && d < 1.6) pts.push([d * Math.cos(a * D2R), d * Math.sin(a * D2R)]); }
+  const libre = (phi) => {
+    const c = Math.cos(phi * D2R), s = Math.sin(phi * D2R); let f = 1.2;
+    for (const [x, y] of pts) { const u = x * c + y * s, w = -x * s + y * c; if (u > 0 && u < f && Math.abs(w) < 0.17) f = u; }
+    return f;
+  };
+  const phiR = clamp(dir, -MAX_ANGLE, MAX_ANGLE) * 1.6;     // direction visée par la conduite réactive
+  const fR = libre(phiR);
+  // obstacle fixe ou voiture qui roule ? on compare la vitesse à laquelle il se rapproche à notre propre vitesse
+  if (api.nouveauScan) {
+    if (st.fT !== undefined && api.temps > st.fT && fR < 1.15 && st.fPrec < 1.15) {
+      const rapproche = (st.fPrec - fR) / (api.temps - st.fT);
+      st.mobile = 0.7 * (st.mobile ?? 0) + 0.3 * (rapproche < 0.8 * Math.max(api.vitesse, 0.3) ? 1 : 0);
+    } else if (fR >= 1.15) st.mobile = undefined;
+    st.fPrec = fR; st.fT = api.temps;
+    // derrière une voiture arrêtée depuis plus d'1 s : on la considère comme un obstacle et on la contourne
+    st.attente = fR < 0.75 && Math.abs(api.vitesse) < 0.15 ? (st.attente || 0) + (api.temps - (st.tAtt || api.temps)) : 0;
+    st.tAtt = api.temps;
+    if (st.attente > 1.0) st.mobile = 0;
+  }
+  if (fR < 1.15 && (st.mobile ?? 0) > 0.5) {
+    // une voiture devant : on la suit à distance au lieu de la contourner (la reconnaissance reste sur la piste)
+    vit = Math.min(vit, Math.max(0, 1.6 * (fR - 0.45)));
+  } else if (fR < 0.9) {
+    let best = phiR, fb = -1;
+    for (let phi = -70; phi <= 70; phi += 2) {
+      const f = libre(phi), score = f - 0.002 * Math.abs(phi - phiR);
+      if (score > fb) { fb = score; best = phi; }
+    }
+    dir = clamp(best / 1.6, -MAX_ANGLE, MAX_ANGLE);
+    vit = Math.min(vit, 0.45 + 0.6 * Math.max(0, fb));
+  }
+  // juste après une marche arrière : on repart braqué vers le côté dégagé
+  if (api.temps < (st.forceFin || -1)) { dir = st.forceDir; vit = Math.min(vit, 0.6); }
+  st.bloque = Math.abs(api.vitesse) < 0.08 ? (st.bloque || 0) + 1 : 0;
+  if (devant < 180 || st.bloque > 40) {
+    // coincée : on recule en braquant pour pivoter vers le côté le plus dégagé ; si ça se répète au même
+    // endroit, on recule plus longtemps et on braque à fond (la voiture est sans doute en travers du couloir)
+    st.reculs = (st.reculs || []).filter(tt => api.temps - tt < 8); st.reculs.push(api.temps);
+    const n = st.reculs.length;
+    let esc = dir;
+    if (n >= 2 || Math.abs(esc) < 6) esc = (secteur(t, 20, 90) >= secteur(t, -90, -20) ? 1 : -1) * MAX_ANGLE;
+    st.reculFin = api.temps + 0.8 + 0.4 * Math.min(n - 1, 3); st.reculDir = esc; st.bloque = 0;
+    st.forceDir = esc; st.forceFin = st.reculFin + 1.0;
+    api.commander(-1.0, -esc); return;
+  }
+  api.commander(vit, dir);
+}
+
 class AlgoBase {          // programme de départ CoVAPSy
   constructor() { this.t = new Float64Array(360); }
   pas(api) {
@@ -1765,13 +1896,13 @@ class AlgoPerso {
 //  A_ACC / A_FREIN : accélération et freinage utilisés pour le profil de vitesse (la voiture peut 3 et 6 m/s²)
 //  MARGE : place gardée de chaque côté dans le couloir ; DEGAGE : distance minimale au mur le plus proche (coins vifs)
 //  VISE0 + VISE_K × vitesse : distance du point visé par le pure pursuit ; ANTICIPE : anticipation de la vitesse (s)
-const C = { V_EXPLO: 1.3, V_MAX: 7.5, A_LAT: 5.8, A_ACC: 2.9, A_FREIN: 5.5, MARGE: 0.16, DEGAGE: 0.25, VISE0: 0.35, VISE_K: 0.16, ANTICIPE: 0.15, RES: 0.05, SEUIL: 3, LIBRE: 3 };
+const C = { V_EXPLO: 1.3, V_MAX: 7.5, A_LAT: 5.8, A_ACC: 2.9, A_FREIN: 5.5, MARGE: 0.16, DEGAGE: 0.25, VISE0: 0.35, VISE_K: 0.16, ANTICIPE: 0.15, RES: 0.05, SEUIL: 3, LIBRE: 3, DEG_OMNI: 0.14, PL_OK: 0.15, PL_MIN: 0.11, PL_R: 0.14 };
 
 class Carte {
   // c : nombre d'impacts lidar dans la case ; l : nombre de fois où un rayon l'a traversée (case vue libre).
   // Une case est un mur si elle a été touchée assez souvent ET plus souvent que vue libre :
   // une voiture qui passait (ou qui bouchait le passage) est ainsi effacée de la carte dès qu'on revoit la case vide.
-  constructor() { this.N = 1600; this.O = 40; this.c = new Uint16Array(this.N * this.N); this.l = new Uint16Array(this.N * this.N); this.nbMurs = 0; }
+  constructor() { this.N = 1600; this.O = 40; this.c = new Uint16Array(this.N * this.N); this.l = new Uint16Array(this.N * this.N); this.nbMurs = 0; this.effaces = 0; }
   mur(k) { return this.c[k] >= C.SEUIL && this.l[k] < C.LIBRE * this.c[k]; }
   degager(x0, y0, x1, y1) {          // rayon du lidar de (x0, y0) jusqu'à juste avant l'impact (x1, y1)
     const d = Math.hypot(x1 - x0, y1 - y0), fin = Math.min(d - 0.2, 3.0);
@@ -1782,7 +1913,10 @@ class Carte {
       const [i, j] = this.ij(x0 + ux * s, y0 + uy * s);
       if (i < 0 || j < 0 || i >= this.N || j >= this.N) return;
       const k = i * this.N + j;
-      if (k !== dernier && this.l[k] < 65535) { this.l[k]++; dernier = k; }
+      if (k !== dernier && this.l[k] < 65535) {
+        this.l[k]++; dernier = k;
+        if (this.c[k] >= C.SEUIL && this.l[k] === C.LIBRE * this.c[k]) this.effaces++;   // un « mur » vient d'être effacé
+      }
     }
   }
   ij(x, y) { return [Math.floor((x + this.O) / C.RES), Math.floor((y + this.O) / C.RES)]; }
@@ -1889,6 +2023,19 @@ class AlgoCourse {
     this.pose = [x, y, th];
     return true;
   }
+  // En course, la carte continue d'apprendre : les murs connus sont renforcés et les cases vues libres sont
+  // effacées si elles étaient en fait une voiture (arrêtée pendant la reconnaissance, par exemple).
+  // Les points qui ne sont pas des murs connus (les autres voitures) ne sont jamais ajoutés.
+  affinerCarte(local) {
+    const [px, py, pth] = this.pose, lx = px + LIDAR.avant * Math.cos(pth), ly = py + LIDAR.avant * Math.sin(pth);
+    for (let k = 0; k < local.length; k += 2) {
+      const [wx, wy] = this.versMonde(local[k], this.pose);
+      let connu = false;
+      for (let di = -1; di <= 1 && !connu; di++) for (let dj = -1; dj <= 1 && !connu; dj++) connu = this.carte.occ(wx + di * C.RES, wy + dj * C.RES);
+      if (connu) this.carte.ajouter(wx, wy);
+      this.carte.degager(lx, ly, wx, wy);
+    }
+  }
   obstaclesImprevus(local) {     // points lidar devant qui ne sont pas des murs de la carte (autres voitures)
     const inconnus = [];
     for (const p of local) {
@@ -1913,14 +2060,46 @@ class AlgoCourse {
     let P = reechantillonner(this.chemin, 0.10);
     P = reechantillonner(lisser(P, 5), 0.20);
     const N = normales(P), n = P.length;
+    // couloir praticable : les décalages d le long de la normale où le centre de la voiture reste à au moins
+    // MARGE de tout mur de la carte, dans toutes les directions (un mur fin posé en travers est ainsi bien vu)
+    const R2 = C.DEG_OMNI * C.DEG_OMNI, rc = Math.ceil(C.DEG_OMNI / C.RES) + 1;
+    const degage = (i, d) => { const r = this.carte.plusProche(P[i][0] + d * N[i][0], P[i][1] + d * N[i][1], rc); return !r || r[0] >= R2; };
     const libre = (p, d) => { for (let s = 0.02; s < 2.0; s += 0.02) if (this.carte.occ(p[0] + s * d[0], p[1] + s * d[1])) return s; return 2.0; };
     const bas = [], haut = [];
     for (let i = 0; i < n; i++) {
-      let h = libre(P[i], N[i]) - C.MARGE, b = -(libre(P[i], [-N[i][0], -N[i][1]]) - C.MARGE);
+      // point de départ : le chemin de reconnaissance, ou le décalage dégagé le plus proche
+      let d0 = null;
+      for (let k = 0; k <= 50 && d0 === null; k++) for (const d of k ? [k * 0.02, -k * 0.02] : [0]) if (degage(i, d)) { d0 = d; break; }
+      if (d0 === null) {     // rien de dégagé à moins d'1 m : ancienne méthode (milieu entre les murs)
+        let h = libre(P[i], N[i]) - C.MARGE, b = -(libre(P[i], [-N[i][0], -N[i][1]]) - C.MARGE);
+        if (b > h) { const m = (b + h) / 2; b = m; h = m; }
+        bas.push(b); haut.push(h); continue;
+      }
+      let h = d0, b = d0;
+      while (h < 2.0 && degage(i, h + 0.02)) h += 0.02;
+      while (b > -2.0 && degage(i, b - 0.02)) b -= 0.02;
+      // et, comme avant, MARGE jusqu'au premier mur le long de la normale
+      h = Math.min(h, libre(P[i], N[i]) - C.MARGE); b = Math.max(b, -(libre(P[i], [-N[i][0], -N[i][1]]) - C.MARGE));
       if (b > h) { const m = (b + h) / 2; b = m; h = m; }
       bas.push(b); haut.push(h);
     }
-    const course = this.ligneTendue(P, N, bas, haut, C.DEGAGE);
+    let course = this.ligneTendue(P, N, bas, haut, C.DEGAGE);
+    // essai virtuel : on « roule » sur la trajectoire avec le vrai braquage maximum (la voiture coupe les virages
+    // trop serrés). Là où un coin de la voiture toucherait un mur de la carte, on écarte la trajectoire de ce mur.
+    for (let essai = 0; essai < 5; essai++) {
+      const touches = this.essaiVirtuel(course.Q, course.V);
+      if (!touches.length) break;
+      for (const [wx, wy, hx, hy] of touches) {
+        let b = 0, db = Infinity;
+        for (let i = 0; i < n; i++) { const d = (P[i][0] - hx) ** 2 + (P[i][1] - hy) ** 2; if (d < db) { db = d; b = i; } }
+        const cote = (wx - P[b][0]) * N[b][0] + (wy - P[b][1]) * N[b][1];
+        for (let k = -5; k <= 5; k++) {
+          const i = mod(b + k, n), pousse = 0.04 * (1 - Math.abs(k) / 6);
+          if (cote > 0) haut[i] = Math.max(bas[i], haut[i] - pousse); else bas[i] = Math.min(haut[i], bas[i] + pousse);
+        }
+      }
+      course = this.ligneTendue(P, N, bas, haut, C.DEGAGE);
+    }
     const temps = course.V.reduce((s, v) => s + 0.05 / v, 0);
     api.log(`trajectoire calculée en ${((performance.now() - t0) / 1000).toFixed(2)} s : ${(course.Q.length * 0.05).toFixed(1)} m, ` +
             `temps prévu ${temps.toFixed(2)} s, vitesse ${Math.min(...course.V).toFixed(1)} à ${Math.max(...course.V).toFixed(1)} m/s`);
@@ -1928,6 +2107,34 @@ class AlgoCourse {
     this.NQ = normales(course.Q);
     this.dPrev = 0; this.autreV = null; this.vObs = 0; this.plan = null;
     api.afficherTrace(course.Q);
+  }
+  // essai virtuel du suivi de la trajectoire Q (pure pursuit, braquage limité à MAX_ANGLE, servo limité) :
+  // renvoie les endroits où un coin de la voiture passerait à moins de 3 cm d'un mur de la carte
+  essaiVirtuel(Q, V) {
+    const n = Q.length, dt = 0.02, touches = [], bMax = MAX_ANGLE * D2R;
+    let x = Q[0][0], y = Q[0][1], th = Math.atan2(Q[1][1] - Q[0][1], Q[1][0] - Q[0][0]), v = V[0], braq = 0, idx = 0, parcouru = 0, dernier = -1;
+    const coins = [[-TT02.arriere, 0.095], [-TT02.arriere, -0.095], [TT02.avant, 0.095], [TT02.avant, -0.095], [0.13, 0.095], [0.13, -0.095], [TT02.avant, 0]];
+    while (parcouru < n * 0.05 * 1.15) {
+      let b = idx, db = Infinity;
+      for (let d = -5; d < 30; d++) { const j = mod(idx + d, n), e = (Q[j][0] - x) ** 2 + (Q[j][1] - y) ** 2; if (e < db) { db = e; b = j; } }
+      idx = b;
+      const vise = C.VISE0 + C.VISE_K * v;
+      let j = idx; while (Math.hypot(Q[mod(j, n)][0] - x, Q[mod(j, n)][1] - y) < vise && j - idx < n / 2) j++;
+      const q = Q[mod(j, n)], alpha = Math.atan2(q[1] - y, q[0] - x) - th;
+      const cible = clamp(Math.atan2(2 * TT02.L * Math.sin(alpha), vise), -bMax, bMax);
+      braq += clamp(cible - braq, -TT02.servo * dt, TT02.servo * dt);
+      const vc = V[mod(idx + Math.floor(C.ANTICIPE * v / 0.05) + 2, n)];
+      v = vc > v ? Math.min(vc, v + TT02.acc * dt) : Math.max(vc, v - TT02.frein * dt);
+      x += v * Math.cos(th) * dt; y += v * Math.sin(th) * dt; th += v / TT02.L * Math.tan(braq) * dt;
+      parcouru += v * dt;
+      if (parcouru - dernier < 0.25) continue;
+      const c = Math.cos(th), s = Math.sin(th);
+      for (const [u, w] of coins) {
+        const px = x + c * u - s * w, py = y + s * u + c * w, r = this.carte.plusProche(px, py, 1);
+        if (r && r[0] < 0.03 * 0.03) { touches.push([r[1], r[2], x, y]); dernier = parcouru; break; }
+      }
+    }
+    return touches;
   }
   // trajectoire de courbure minimale dans le couloir [bas, haut] (décalage le long des normales N de P),
   // en restant à au moins « degage » des murs de la carte, puis son profil de vitesse
@@ -2053,7 +2260,7 @@ class AlgoCourse {
     for (let m = 0; m <= M; m++) {
       const q = Q[mod(i0 + m * PAS, n)], nn = NQ[mod(i0 + m * PAS, n)];
       // 2 = bien dégagé, 1 = un peu près du mur (on évite), 0 = trop près (on touche presque)
-      libre.push(DS.map(d => { const r = this.carte.plusProche(q[0] + d * nn[0], q[1] + d * nn[1], 3); return !r || r[0] > 0.15 * 0.15 ? 2 : r[0] > 0.11 * 0.11 ? 1 : 0; }));
+      libre.push(DS.map(d => { const r = this.carte.plusProche(q[0] + d * nn[0], q[1] + d * nn[1], 3); return !r || r[0] > C.PL_OK * C.PL_OK ? 2 : r[0] > C.PL_MIN * C.PL_MIN ? 1 : 0; }));
     }
     const libreA = (m, d) => libre[m][clamp(Math.round((d + 0.5) / 0.05), 0, DS.length - 1)];
     // 2) temps de passage prévus le long de la trajectoire (à notre vitesse prévue)
@@ -2064,7 +2271,7 @@ class AlgoCourse {
     }
     // points de l'autre voiture, avec un peu d'avance si on ne la voit plus (le lidar ne voyait que son arrière)
     const base = autre.visible ? autre.pts : autre.pts.concat(autre.pts.map(p => [p[0] + 0.3 * autre.T[0], p[1] + 0.3 * autre.T[1]]));
-    const R2 = (autre.visible ? 0.14 : 0.17) ** 2;      // notre demi-largeur (9,5 cm) + marge
+    const R2 = (autre.visible ? C.PL_R : C.PL_R + 0.03) ** 2;      // notre demi-largeur (9,5 cm) + marge
     let dmin2 = 9;      // distance mini à l'autre voiture sur le chemin testé (au carré)
     const touche = (px, py, t) => {
       // prévision prudente : on suppose qu'elle roule un peu moins vite que mesuré (elle peut freiner)
@@ -2147,12 +2354,13 @@ class AlgoCourse {
         const [px, py, pth] = this.pose, lx = px + LIDAR.avant * Math.cos(pth), ly = py + LIDAR.avant * Math.sin(pth);
         for (const p of local) { const w = this.versMonde(p, this.pose); this.carte.ajouter(w[0], w[1]); this.carte.degager(lx, ly, w[0], w[1]); }
       }
+      if (!this.carto && ok === true) this.affinerCarte(local);
       if (!this.carto) this.obstacle = this.obstaclesImprevus(local);
     }
     if (this.phase === "Reconnaissance") {
       // le tour de repérage commence quand la voiture roule dans le bon sens
       if (!this.ref) {
-        conduiteReactive(this.reac, api, this.t, C.V_EXPLO);
+        conduitePrudente(this.reac, api, this.t, C.V_EXPLO);
         this.stable = !api.sensInverse && !this.reac.dt && api.vitesse > 0.3 && Math.abs(api.braquage) < 4 * D2R ? (this.stable || 0) + 1 : 0;
         if (this.stable > 15) this.ref = this.pose.slice();   // roule droit, dans le bon sens, depuis 0,5 s
         return;
@@ -2160,7 +2368,7 @@ class AlgoCourse {
       const prec = this.chemin[this.chemin.length - 1];
       if (prec) this.distance += Math.hypot(this.pose[0] - prec[0], this.pose[1] - prec[1]);
       this.chemin.push([this.pose[0], this.pose[1]]);
-      conduiteReactive(this.reac, api, this.t, C.V_EXPLO);
+      conduitePrudente(this.reac, api, this.t, C.V_EXPLO);
       // ligne de départ : perpendiculaire à la direction de la voiture au début du repérage
       const loc = (p) => { const c = Math.cos(this.ref[2]), s = Math.sin(this.ref[2]), dx = p[0] - this.ref[0], dy = p[1] - this.ref[1];
                            return [dx * c + dy * s, -dx * s + dy * c]; };
@@ -2170,6 +2378,7 @@ class AlgoCourse {
       if (this.distance > 8 && franchie) {
         api.log(`tour de reconnaissance terminé (${this.distance.toFixed(1)} m), calcul de la trajectoire`);
         this.carto = false;
+        this.effacesCalc = this.carte.effaces; this.tCalc = api.temps;
         this.calculerTrajectoire(api);
         this.phase = "Course";
         api.log("départ de la course");
@@ -2179,7 +2388,7 @@ class AlgoCourse {
     // à contresens : demi-tour (la conduite réactive s'en charge), puis on retrouve sa place sur la trajectoire
     if (api.sensInverse || this.reac.dt) {
       this.phase = "Course, demi-tour";
-      conduiteReactive(this.reac, api, this.t, 1.0);
+      conduitePrudente(this.reac, api, this.t, 1.0);
       this.indice = null;
       return;
     }
@@ -2191,9 +2400,17 @@ class AlgoCourse {
     }
     if (api.temps < this.secoursFin || this.echecs > 8 || (mini(this.t, -10, 10) < 200 && this.obstacle > 1.0)) {
       this.phase = "Course, conduite de secours";
-      conduiteReactive(this.reac, api, this.t, 1.0);
+      conduitePrudente(this.reac, api, this.t, 1.0);
       this.indice = null;
       return;
+    }
+    // des « murs » ont disparu de la carte (une voiture vue pendant la reconnaissance) : on recalcule la trajectoire,
+    // au calme (pas d'autre voiture en vue, pas en dépassement), au plus une fois toutes les 8 s
+    if (this.carte.effaces - (this.effacesCalc || 0) > 12 && api.temps - (this.tCalc || 0) > 8 && !this.depasse
+        && !(this.inconnus && this.inconnus.length) && (!this.autreV || api.temps - this.autreV.t > 2)) {
+      this.effacesCalc = this.carte.effaces; this.tCalc = api.temps;
+      api.log("des obstacles de la carte ont disparu (sans doute une voiture vue pendant la reconnaissance) : nouvelle trajectoire");
+      this.calculerTrajectoire(api); this.indice = null;
     }
     this.suivre(api);
     this.phase = this.depasse ? "Course, dépassement" : this.obstacle < 3 ? "Course, suit la voiture de devant" : "Course";
@@ -2346,7 +2563,7 @@ function ajusterVue() {
 function majCamera(net) {
   if (modeEdition || camera.mode === "ensemble") { vue = { ...vueBase }; return; }
   const sc = vueBase.sc * camera.zoom;
-  if (camera.mode === "suivre") {
+  if (camera.mode === "suivre" || camera.mode === "3d") {
     const v = voitures[selection];
     if (v) {
       const ax = v.x + Math.cos(v.th) * v.v * 0.35, ay = v.y + Math.sin(v.th) * v.v * 0.35;   // on regarde un peu devant
@@ -2365,11 +2582,13 @@ function choisirCamera(mode) {
     if (mode === "suivre" && camera.zoom < 1.5) camera.zoom = 3;
   }
   camera.mode = mode;
-  if (mode === "suivre") majCamera(true);
+  if (mode === "3d") { if (!initGL()) { camera.mode = mode = "suivre"; journal("La vue 3D n'est pas disponible dans ce navigateur (WebGL désactivé)."); } V3D.saut = true; V3D.cap = null; }
+  if (mode === "suivre" || mode === "3d") majCamera(true);
   document.querySelectorAll("#cameraBoutons [data-cam]").forEach(b => b.classList.toggle("actif", b.dataset.cam === camera.mode));
 }
 function zoomer(f, px, py) {
   if (modeEdition) return;
+  if (camera.mode === "3d") { V3D.dist = clamp(V3D.dist / f, 0.25, 4); return; }
   if (camera.mode === "ensemble") choisirCamera("libre");
   const [wx, wy] = px === undefined ? [camera.cx, camera.cy] : versMonde(px, py);
   const avant = camera.zoom;
@@ -3306,7 +3525,7 @@ const CODE_DEFAUT_PY = "# Exemple : on compare l'espace libre \u00e0 gauche et \
 const CODE_VIDE_PY = "# \u00c9cris ton code ici : il est ex\u00e9cut\u00e9 \u00e0 chaque pas (toutes les 32 ms)\nset_vitesse_m_s(0.5)\nset_direction_degre(0)\n";
 const COPIES_PY = { axel: "# Programme d'Axel et Lucas, r\u00e9\u00e9crit avec les fonctions de \u00ab Mon algorithme \u00bb\n# (moyenne du lidar par secteurs de 5\u00b0, la voiture vise le secteur le plus d\u00e9gag\u00e9)\n\n# moyenne par secteur de 5\u00b0 : secteur k = angle 5k (0 devant, 18 \u00e0 gauche, 54 \u00e0 droite), moins 150 mm\nmoy = [0] * 72\nfor k in range(72):\n    s = 0\n    for a in range(5):\n        s += tableau_lidar_mm[(5 * k - 1 + a) % 360]\n    moy[k] = s / 5 - 150\n    if 19 <= k <= 53:\n        moy[k] = 0          # l'arri\u00e8re est ignor\u00e9\n\nindex_max = 0\nfor k in range(72):\n    if moy[k] > moy[index_max]:\n        index_max = k\ndelta = index_max - 72 if index_max > 36 else index_max\n\nen_recul = False\nif moy[0] > 2000:\n    vitesse = 1.8\n    angle = 0.5 * delta\n    if moy[18] < 100:\n        angle -= 8\n    if moy[54] < 100:\n        angle += 8\nelif moy[0] < 250:\n    vitesse = -5 / 3.6                   # -5 km/h\n    if moy[7] > moy[65]:\n        angle = -21\n    elif moy[65] > moy[7]:\n        angle = 21\n    else:\n        angle = 0\n    en_recul = True\nelif moy[0] < 500:\n    vitesse = 0.5\n    angle = 21 * delta\nelse:\n    vitesse = 0.8\n    if moy[18] < 200 or moy[54] < 200:\n        angle = 21 * delta\n    else:\n        angle = 15 * delta\n\n# coinc\u00e9e (vitesse nulle pendant 0,5 s alors qu'elle veut avancer) : 0,8 s de marche arri\u00e8re\nif not en_recul and abs(vitesse_actuelle) < 0.05:\n    memoire[\"bloque\"] = memoire.get(\"bloque\", 0) + 1\nelse:\n    memoire[\"bloque\"] = 0\nif memoire[\"bloque\"] > 15:\n    memoire[\"recul_fin\"] = temps + 0.8\n    memoire[\"recul_angle\"] = -16 if delta >= 0 else 16\n    memoire[\"bloque\"] = 0\nif temps < memoire.get(\"recul_fin\", 0):\n    vitesse = -1.0\n    angle = memoire[\"recul_angle\"]\n    en_recul = True\n\n# en marche avant, on ne braque jamais vers un mur trop proche (\u00e0 45\u00b0 ou sur le c\u00f4t\u00e9)\nangle = max(-16, min(16, angle))\nif not en_recul:\n    gauche_proche = moy[18] < 100 or moy[9] < 200\n    droite_proche = moy[54] < 100 or moy[63] < 200\n    if gauche_proche and not droite_proche:\n        angle = min(angle, -8)\n    if droite_proche and not gauche_proche:\n        angle = max(angle, 8)\n\nset_direction_degre(angle)\nset_vitesse_m_s(vitesse)\n", base: "# Programme de base CoVAPSy : m\u00eame calcul que le code fourni pour Webots\nset_vitesse_m_s(0.5)\nset_direction_degre(0.02 * (tableau_lidar_mm[60] - tableau_lidar_mm[-60]))\n", reactif: "# R\u00e9actif am\u00e9lior\u00e9, r\u00e9\u00e9crit avec les fonctions de \u00ab Mon algorithme \u00bb\ndef secteur(debut, fin):\n    \"\"\"Moyenne des mesures valides entre debut et fin degr\u00e9s.\"\"\"\n    vals = [tableau_lidar_mm[i] for i in range(debut, fin + 1) if tableau_lidar_mm[i] > 0]\n    return sum(vals) / len(vals) if vals else 3000\n\ndef mini(debut, fin):\n    \"\"\"Plus petite mesure valide entre debut et fin degr\u00e9s.\"\"\"\n    vals = [tableau_lidar_mm[i] for i in range(debut, fin + 1) if tableau_lidar_mm[i] > 0]\n    return min(vals) if vals else 3000\n\nV_MAX = 3.0\n\n# marche arri\u00e8re en cours ?\nif temps < memoire.get(\"recul_fin\", 0):\n    set_vitesse_m_s(-1.0)\n    set_direction_degre(-memoire[\"recul_dir\"])\n    return\n\ndevant = mini(-12, 12)\ndirection = 0.03 * (secteur(30, 75) - secteur(-75, -30))\nif mini(20, 60) < 250:      # mur proche \u00e0 gauche\n    direction -= 8\nif mini(-60, -20) < 250:    # mur proche \u00e0 droite\n    direction += 8\n\nvitesse = 0.7 + (V_MAX - 0.7) * min(1, max(0, (devant - 500) / 1500))\nvitesse *= 1 - 0.4 * min(abs(direction), 16) / 16\n\n# bloqu\u00e9e contre un mur : on recule 0,8 s\nif abs(vitesse_actuelle) < 0.08:\n    memoire[\"bloque\"] = memoire.get(\"bloque\", 0) + 1\nelse:\n    memoire[\"bloque\"] = 0\nif devant < 180 or memoire[\"bloque\"] > 40:\n    memoire[\"recul_fin\"] = temps + 0.8\n    memoire[\"recul_dir\"] = direction\n    memoire[\"bloque\"] = 0\n    set_vitesse_m_s(-1.0)\n    set_direction_degre(-direction)\n    return\n\nset_direction_degre(direction)\nset_vitesse_m_s(vitesse)\n" };
 
-const SRC_PY = {"base": "# Contrôleur de base CoVAPSy — même code que dans Webots.\n# Appuyer sur A pour démarrer le mode auto, N pour l'arrêter.\nfrom vehicle import Driver\nfrom controller import Lidar\n\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nsensorTimeStep = 4 * basicTimeStep\n\n# Lidar\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(sensorTimeStep)\nlidar.enablePointCloud()\n\n# Clavier\nkeyboard = driver.getKeyboard()\nkeyboard.enable(sensorTimeStep)\n\nmaxSpeed = 28         # km/h\nmaxangle_degre = 16\n\ndriver.setSteeringAngle(0)\ndriver.setCruisingSpeed(0)\n\ntableau_lidar_mm = [0] * 360\n\n\ndef set_vitesse_m_s(vitesse_m_s):\n    speed = vitesse_m_s * 3.6\n    speed = max(0, min(maxSpeed, speed))\n    driver.setCruisingSpeed(speed)\n\n\ndef set_direction_degre(angle_degre):\n    angle_degre = max(-maxangle_degre, min(maxangle_degre, angle_degre))\n    driver.setSteeringAngle(-angle_degre * 3.14 / 180)   # Webots : positif = droite\n\n\ndef recule(duree_s=0.8):\n    driver.setCruisingSpeed(-3.6)\n    driver.setSteeringAngle(0)\n    for _ in range(int(duree_s * 1000 / basicTimeStep)):\n        if driver.step() == -1:\n            break\n\n\nmodeAuto = False\nprint(\"[jaune] A = mode auto, N = stop\")\n\nwhile driver.step() != -1:\n    while True:\n        currentKey = keyboard.getKey()\n        if currentKey == -1:\n            break\n        elif currentKey in (ord('n'), ord('N')):\n            if modeAuto:\n                modeAuto = False\n                print(\"[jaune] arrêt\")\n        elif currentKey in (ord('a'), ord('A')):\n            if not modeAuto:\n                modeAuto = True\n                print(\"[jaune] mode auto\")\n\n    # acquisition du lidar : tableau_lidar_mm[i] = distance à i degrés (sens trigo, 0 = devant)\n    donnees_lidar_brutes = lidar.getRangeImage()\n    for i in range(360):\n        d = donnees_lidar_brutes[-i]\n        tableau_lidar_mm[i] = 1000 * d if 0 < d < 20 else 0\n\n    if not modeAuto:\n        set_direction_degre(0)\n        set_vitesse_m_s(0)\n        continue\n\n    ##################################################\n    # Programme étudiant\n    ##################################################\n    vitesse_m_s = 0.5\n    direction_degre = 0.02 * (tableau_lidar_mm[60] - tableau_lidar_mm[-60])\n    set_direction_degre(direction_degre)\n    set_vitesse_m_s(vitesse_m_s)\n", "reactif": "# Contrôleur « réactif amélioré » CoVAPSy, pour Webots\n#  - direction : différence gauche/droite moyennée sur des secteurs de 30° à 75°\n#  - vitesse   : adaptée à la place libre devant et au braquage\n#  - marche arrière automatique si la voiture est bloquée\nfrom vehicle import Driver\nfrom controller import Lidar\n\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nsensorTimeStep = 4 * basicTimeStep\n\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(sensorTimeStep)\nkeyboard = driver.getKeyboard()\nkeyboard.enable(sensorTimeStep)\n\nMAX_KMH = 28\nMAX_ANGLE = 16\nV_MAX = 3.0          # m/s\n\n\ndef set_vitesse_m_s(v):\n    driver.setCruisingSpeed(max(-MAX_KMH, min(MAX_KMH, v * 3.6)))\n\n\ndef set_direction_degre(a):\n    a = max(-MAX_ANGLE, min(MAX_ANGLE, a))\n    driver.setSteeringAngle(-a * 3.1416 / 180)   # Webots : positif = droite\n\n\ndef secteur(t, debut, fin):\n    \"\"\"Moyenne des mesures valides entre debut et fin degrés (sens trigo).\"\"\"\n    vals = [t[i % 360] for i in range(debut, fin + 1) if t[i % 360] > 0]\n    return sum(vals) / len(vals) if vals else 3000\n\n\ndef mini(t, debut, fin):\n    vals = [t[i % 360] for i in range(debut, fin + 1) if t[i % 360] > 0]\n    return min(vals) if vals else 3000\n\n\ndef recule(direction):\n    \"\"\"Recule environ 0.8 s en braquant à l'opposé.\"\"\"\n    set_direction_degre(-direction)\n    set_vitesse_m_s(-1.0)\n    for _ in range(int(0.8 * 1000 / basicTimeStep)):\n        if driver.step() == -1:\n            return\n\n\ntableau = [0] * 360\nbloque = 0\n\nwhile driver.step() != -1:\n    brut = lidar.getRangeImage()\n    for i in range(360):\n        d = brut[-i]\n        tableau[i] = 1000 * d if 0 < d < 20 else 0\n\n    devant = mini(tableau, -12, 12)\n    direction = 0.03 * (secteur(tableau, 30, 75) - secteur(tableau, -75, -30))\n    if mini(tableau, 20, 60) < 250:      # mur proche à gauche\n        direction -= 8\n    if mini(tableau, -60, -20) < 250:    # mur proche à droite\n        direction += 8\n\n    vitesse = 0.7 + (V_MAX - 0.7) * min(1.0, max(0.0, (devant - 500) / 1500))\n    vitesse *= 1 - 0.4 * min(abs(direction), MAX_ANGLE) / MAX_ANGLE\n\n    if abs(driver.getCurrentSpeed()) < 0.3:\n        bloque += 1\n    else:\n        bloque = 0\n    if devant < 180 or bloque > 40:\n        recule(direction)\n        bloque = 0\n        continue\n\n    set_direction_degre(direction)\n    set_vitesse_m_s(vitesse)\n", "course": "# =============================================================================\n#  Contrôleur « course » CoVAPSy — compatible Webots (numpy requis)\n#\n#  Phase 1 – RECONNAISSANCE : la voiture fait un tour prudent en conduite\n#            réactive. Elle estime sa position (odométrie + recalage lidar) et\n#            construit une carte de la piste.\n#  Phase 2 – CALCUL : à partir de la carte, calcul de la trajectoire de\n#            courbure minimale dans le couloir de la piste, puis du profil de\n#            vitesse (vitesse max en virage, accélération et freinage limités).\n#  Phase 3 – COURSE : suivi de la trajectoire (pure pursuit) à pleine vitesse,\n#            en continuant à se recaler sur la carte avec le lidar.\n# =============================================================================\nimport math\nimport time\n\nimport numpy as np\nfrom vehicle import Driver\nfrom controller import Lidar\n\n# ------------------------------------------------------------------ réglages\nEMPATTEMENT = 0.257      # m\nLIDAR_AVANT = 0.20       # m, position du lidar devant l'essieu arrière\nMAX_ANGLE = 16           # degrés, butée de direction autorisée\nMAX_KMH = 28             # limite du règlement CoVAPSy\n\nV_EXPLO = 1.3            # m/s, vitesse max pendant le tour de reconnaissance\nV_COURSE_MAX = 7.5       # m/s, vitesse max en course\nA_LAT = 5.0              # m/s², accélération latérale visée en virage (< adhérence)\nA_ACC = 2.5              # m/s², accélération utilisée dans le profil de vitesse\nA_FREIN = 4.0            # m/s², freinage utilisé dans le profil de vitesse\nMARGE = 0.20             # m, distance gardée entre le milieu de la voiture et les murs\nRESOLUTION = 0.05        # m, taille d'une case de la carte\nSEUIL_MUR = 3            # nb d'impacts lidar pour qu'une case soit un mur (filtre les voitures qui passent)\n\n# ------------------------------------------------------------------ Webots\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nDT = basicTimeStep / 1000.0\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(4 * basicTimeStep)\nkeyboard = driver.getKeyboard()\nkeyboard.enable(4 * basicTimeStep)\n\n\ndef commander(vitesse_m_s, angle_degre):\n    \"\"\"angle_degre positif = gauche.\"\"\"\n    angle_degre = max(-MAX_ANGLE, min(MAX_ANGLE, angle_degre))\n    driver.setSteeringAngle(-math.radians(angle_degre))\n    driver.setCruisingSpeed(max(-MAX_KMH, min(MAX_KMH, vitesse_m_s * 3.6)))\n\n\n# ------------------------------------------------------------------ carte\nclass Carte:\n    \"\"\"Grille d'occupation : nombre d'impacts lidar par case de 5 cm.\"\"\"\n\n    def __init__(self, taille=40.0):\n        self.n = int(taille / RESOLUTION)\n        self.origine = taille / 2\n        self.cases = np.zeros((self.n, self.n), np.uint16)\n\n    def indices(self, pts):\n        return np.floor((pts + self.origine) / RESOLUTION).astype(int)\n\n    def ajouter(self, pts):\n        i = self.indices(pts)\n        ok = (i >= 0).all(1) & (i < self.n).all(1)\n        np.add.at(self.cases, (i[ok, 0], i[ok, 1]), 1)\n\n    def occupe(self, pts, seuil=SEUIL_MUR):\n        i = np.clip(self.indices(pts), 0, self.n - 1)\n        return self.cases[i[..., 0], i[..., 1]] >= seuil\n\n    def points_autour(self, x, y, rayon, seuil=SEUIL_MUR):\n        i0, j0 = self.indices(np.array([[x - rayon, y - rayon]]))[0]\n        i1, j1 = self.indices(np.array([[x + rayon, y + rayon]]))[0]\n        i0, j0 = max(i0, 0), max(j0, 0)\n        i1, j1 = min(i1, self.n - 1), min(j1, self.n - 1)\n        k = np.argwhere(self.cases[i0:i1 + 1, j0:j1 + 1] >= seuil) + [i0, j0]\n        return (k + 0.5) * RESOLUTION - self.origine\n\n\n# ------------------------------------------------------------------ localisation\nANGLES = -np.radians(np.arange(360))  # getRangeImage()[k] est à -k degrés\n\n\ndef scan_local(brut, portee=7.0):\n    \"\"\"Points lidar dans le repère voiture (origine = essieu arrière, x devant).\"\"\"\n    r = np.asarray(brut, float)\n    ok = np.isfinite(r) & (r > 0.15) & (r < portee)\n    return np.c_[LIDAR_AVANT + r[ok] * np.cos(ANGLES[ok]), r[ok] * np.sin(ANGLES[ok])]\n\n\ndef vers_monde(local, pose):\n    x, y, th = pose\n    c, s = math.cos(th), math.sin(th)\n    return local @ np.array([[c, s], [-s, c]]) + [x, y]\n\n\ndef recaler(local, pose, carte):\n    \"\"\"ICP point à point : ajuste la pose pour que le scan colle à la carte.\"\"\"\n    M = carte.points_autour(pose[0], pose[1], 7.5)\n    if len(M) < 40 or len(local) < 30:\n        return pose, None          # carte encore trop vide pour se recaler\n    S = local[::2]\n    x, y, th = pose\n    for it in range(12):\n        W = vers_monde(S, (x, y, th))\n        d2 = ((W[:, None, :] - M[None, :, :]) ** 2).sum(2)\n        j = d2.argmin(1)\n        dist = np.sqrt(d2[np.arange(len(W)), j])\n        ok = dist < (0.30 if it < 4 else 0.12)\n        if ok.sum() < 25:\n            return pose, False\n        A, B = W[ok], M[j[ok]]\n        ma, mb = A.mean(0), B.mean(0)\n        U, _, Vt = np.linalg.svd((A - ma).T @ (B - mb))\n        R = Vt.T @ U.T\n        if np.linalg.det(R) < 0:\n            Vt[1] *= -1\n            R = Vt.T @ U.T\n        t = mb - R @ ma\n        x, y = R @ [x, y] + t\n        dth = math.atan2(R[1, 0], R[0, 0])\n        th += dth\n        if abs(dth) < 1e-4 and np.hypot(*t) < 1e-3:\n            break\n    # on refuse une correction trop grande (probablement fausse)\n    if math.hypot(x - pose[0], y - pose[1]) > 0.35 or abs(th - pose[2]) > 0.3:\n        return pose, False\n    return (x, y, th), True\n\n\n# ------------------------------------------------------------------ état\ncarte = Carte()\npose = (0.0, 0.0, 0.0)       # repère = position de départ\ndernier_scan = None\ntableau = [0] * 360           # mm, sens trigo, 0 = devant (comme le code CoVAPSy)\nechecs_recalage = 0\ncartographier = True\nobstacle_devant = 99.0       # m, distance au plus proche obstacle absent de la carte (autre voiture…)\n\n\ndef pas():\n    \"\"\"Un pas de simulation + odométrie + recalage lidar quand un nouveau scan arrive.\"\"\"\n    global pose, dernier_scan, echecs_recalage, obstacle_devant\n    if driver.step() == -1:\n        return False\n    v = driver.getCurrentSpeed() / 3.6\n    braq = -driver.getSteeringAngle()  # positif = gauche\n    x, y, th = pose\n    x += v * math.cos(th) * DT\n    y += v * math.sin(th) * DT\n    th += v / EMPATTEMENT * math.tan(braq) * DT\n    pose = (x, y, th)\n\n    brut = lidar.getRangeImage()\n    if brut and brut != dernier_scan:\n        dernier_scan = brut\n        for i in range(360):\n            d = brut[-i]\n            tableau[i] = 1000 * d if 0 < d < 20 else 0\n        local = scan_local(brut)\n        pose, ok = recaler(local, pose, carte)\n        echecs_recalage = 0 if ok else echecs_recalage + 1\n        if cartographier and ok is not False:      # recalage réussi, ou carte encore vide\n            carte.ajouter(vers_monde(local, pose))\n        if not cartographier:\n            obstacle_devant = obstacles_imprevus(local)\n    return True\n\n\nVOISINS = np.array([[i, j] for i in (-2, -1, 0, 1, 2) for j in (-2, -1, 0, 1, 2)]) * RESOLUTION\n\n\ndef obstacles_imprevus(local):\n    \"\"\"Distance (m) au plus proche point lidar devant la voiture qui n'est PAS un mur de la carte.\"\"\"\n    devant = local[(local[:, 0] > 0.3) & (local[:, 0] < 4.0) & (np.abs(local[:, 1]) < 0.35)]\n    if len(devant) == 0:\n        return 99.0\n    W = vers_monde(devant, pose)\n    connu = carte.occupe(W[:, None, :] + VOISINS[None]).any(1)\n    inconnus = devant[~connu]\n    return float(inconnus[:, 0].min()) if len(inconnus) >= 3 else 99.0\n\n\ndef secteur(debut, fin):\n    vals = [tableau[i % 360] for i in range(debut, fin + 1) if tableau[i % 360] > 0]\n    return sum(vals) / len(vals) if vals else 3000\n\n\ndef mini(debut, fin):\n    vals = [tableau[i % 360] for i in range(debut, fin + 1) if tableau[i % 360] > 0]\n    return min(vals) if vals else 3000\n\n\ndef conduite_reactive(v_max):\n    \"\"\"Conduite simple au lidar (sert au tour de reconnaissance et en secours).\"\"\"\n    devant = mini(-12, 12)\n    direction = 0.03 * (secteur(30, 75) - secteur(-75, -30))\n    if mini(20, 60) < 250:\n        direction -= 8\n    if mini(-60, -20) < 250:\n        direction += 8\n    v = 0.7 + (v_max - 0.7) * min(1.0, max(0.0, (devant - 500) / 1500))\n    v *= 1 - 0.4 * min(abs(direction), MAX_ANGLE) / MAX_ANGLE\n    if devant < 180:\n        reculer(direction)\n        return\n    commander(v, direction)\n\n\ndef reculer(direction):\n    commander(-1.0, -direction)\n    for _ in range(int(0.8 / DT)):\n        if not pas():\n            return\n\n\n# ------------------------------------------------------------------ trajectoire\ndef reechantillonner(P, pas_m):\n    \"\"\"Ré-échantillonne une boucle fermée à pas constant.\"\"\"\n    Q = np.vstack([P, P[:1]])\n    d = np.r_[0, np.cumsum(np.hypot(*np.diff(Q, axis=0).T))]\n    s = np.arange(0, d[-1], pas_m)\n    return np.c_[np.interp(s, d, Q[:, 0]), np.interp(s, d, Q[:, 1])]\n\n\ndef lisser(P, k):\n    noyau = np.ones(2 * k + 1) / (2 * k + 1)\n    ext = np.vstack([P[-k:], P, P[:k]])\n    return np.c_[np.convolve(ext[:, 0], noyau, \"valid\"), np.convolve(ext[:, 1], noyau, \"valid\")]\n\n\ndef normales(P):\n    T = np.roll(P, -1, 0) - np.roll(P, 1, 0)\n    T /= np.linalg.norm(T, axis=1, keepdims=True)\n    return np.c_[-T[:, 1], T[:, 0]]           # vers la gauche\n\n\ndef largeur_libre(P, N, max_m=2.0):\n    s = np.arange(0.02, max_m, 0.02)\n    pts = P[:, None, :] + s[None, :, None] * N[:, None, :]\n    occ = carte.occupe(pts)\n    premier = np.where(occ.any(1), occ.argmax(1), len(s) - 1)\n    return s[premier]\n\n\ndef courbure(P, ds):\n    d1 = (np.roll(P, -1, 0) - np.roll(P, 1, 0)) / (2 * ds)\n    d2 = (np.roll(P, -1, 0) - 2 * P + np.roll(P, 1, 0)) / ds ** 2\n    return (d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]) / np.maximum(np.hypot(*d1.T) ** 3, 1e-9)\n\n\ndef calculer_trajectoire(chemin):\n    t0 = time.perf_counter()\n    # 1) chemin du tour de reconnaissance, lissé -> axe de référence\n    P = reechantillonner(np.array(chemin), 0.10)\n    P = reechantillonner(lisser(P, 5), 0.20)\n    N = normales(P)\n    # 2) couloir praticable de chaque côté\n    gauche = largeur_libre(P, N) - MARGE\n    droite = largeur_libre(P, -N) - MARGE\n    bas, haut = -droite, gauche\n    milieu = (bas + haut) / 2\n    bas, haut = np.minimum(bas, milieu), np.maximum(haut, milieu)\n    # 3) bande élastique : on « tend » la trajectoire (courbure minimale) dans le couloir\n    a = np.clip(np.zeros(len(P)), bas, haut)\n    for _ in range(4000):\n        Q = P + a[:, None] * N\n        delta = 0.5 * (np.roll(Q, 1, 0) + np.roll(Q, -1, 0)) - Q\n        a = np.clip(a + 0.5 * (delta * N).sum(1), bas, haut)\n    Q = P + a[:, None] * N\n    # 4) profil de vitesse\n    ds = 0.05\n    Q = reechantillonner(lisser(reechantillonner(Q, ds), 2), ds)\n    k = np.abs(courbure(Q, ds))\n    k = np.convolve(np.r_[k[-3:], k, k[:3]], np.ones(7) / 7, \"valid\")\n    v = np.minimum(V_COURSE_MAX, np.sqrt(A_LAT / np.maximum(k, 1e-4)))\n    n = len(v)\n    for _ in range(2):                        # deux tours pour gérer la boucle fermée\n        for i in range(n):                    # accélération limitée\n            v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * A_ACC * ds))\n        for i in range(n - 1, -1, -1):        # freinage limité\n            v[i] = min(v[i], math.sqrt(v[(i + 1) % n] ** 2 + 2 * A_FREIN * ds))\n    longueur = n * ds\n    temps = (ds / v).sum()\n    print(f\"[violet] trajectoire calculée en {time.perf_counter() - t0:.2f} s : {longueur:.1f} m, \"\n          f\"temps prévu {temps:.2f} s, vitesse {v.min():.1f} à {v.max():.1f} m/s\")\n    return Q, v\n\n\n# ------------------------------------------------------------------ suivi\nindice = None\n\n\ndef suivre(Q, V):\n    \"\"\"Pure pursuit sur la trajectoire Q, vitesse prise dans le profil V.\"\"\"\n    global indice\n    x, y, th = pose\n    n = len(Q)\n    if indice is None:\n        indice = int(np.argmin(np.hypot(Q[:, 0] - x, Q[:, 1] - y)))\n    else:\n        fen = (indice + np.arange(-20, 60)) % n\n        indice = int(fen[np.argmin(np.hypot(Q[fen, 0] - x, Q[fen, 1] - y))])\n    v = driver.getCurrentSpeed() / 3.6\n    vise = 0.35 + 0.16 * max(v, 0)\n    j = indice\n    while math.hypot(Q[j % n, 0] - x, Q[j % n, 1] - y) < vise and j - indice < n // 2:\n        j += 1\n    dx, dy = Q[j % n, 0] - x, Q[j % n, 1] - y\n    alpha = math.atan2(dy, dx) - th\n    braq = math.atan2(2 * EMPATTEMENT * math.sin(alpha), vise)\n    v_cmd = V[(indice + int(0.15 * v / 0.05) + 2) % n]  # on anticipe un peu la latence\n    # obstacle imprévu devant (autre voiture) : on adapte la vitesse pour pouvoir s'arrêter avant\n    v_cmd = min(v_cmd, math.sqrt(2 * A_FREIN * max(0.0, obstacle_devant - 0.75)))\n    commander(v_cmd, math.degrees(braq))\n    return indice\n\n\n# ================================================================== programme\nprint(\"[violet] phase 1 : tour de reconnaissance (N = stop, A = reprise)\")\nactif = True\nchemin = []\ndistance = 0.0\nphase = \"RECONNAISSANCE\"\nQ = V = None\ndebut_tour = None\ndernier_indice = 0\ntours = 0\n\nwhile pas():\n    k = keyboard.getKey()\n    while k != -1:\n        if k in (ord('N'), ord('n')):\n            actif = False\n        elif k in (ord('A'), ord('a')):\n            actif = True\n        k = keyboard.getKey()\n    if not actif:\n        commander(0, 0)\n        continue\n\n    if phase == \"RECONNAISSANCE\":\n        if chemin:\n            distance += math.hypot(pose[0] - chemin[-1][0], pose[1] - chemin[-1][1])\n        chemin.append(pose[:2])\n        conduite_reactive(V_EXPLO)\n        # ligne de départ : droite x = 0 du repère de départ, sur 1.5 m de chaque côté\n        franchie = len(chemin) > 1 and chemin[-2][0] < 0 <= chemin[-1][0] and abs(pose[1]) < 1.5\n        if distance > 8 and franchie:\n            print(f\"[violet] tour de reconnaissance terminé ({distance:.1f} m, t = {driver.getTime():.1f} s)\")\n            print(\"[violet] phase 2 : calcul de la trajectoire optimale\")\n            cartographier = False\n            Q, V = calculer_trajectoire(chemin)\n            if hasattr(driver, \"afficherTrace\"):        # uniquement dans le simulateur\n                driver.afficherTrace(Q[::4].tolist())\n            phase = \"COURSE\"\n            print(\"[violet] phase 3 : COURSE !\")\n            debut_tour = driver.getTime()\n\n    else:  # COURSE\n        if echecs_recalage > 8 or (mini(-10, 10) < 200 and obstacle_devant > 1.0):\n            # position perdue ou mur trop proche : conduite de secours\n            conduite_reactive(1.0)\n            indice = None\n            continue\n        i = suivre(Q, V)\n        if dernier_indice > 0.9 * len(Q) and i < 0.1 * len(Q):  # ligne de départ franchie\n            t = driver.getTime()\n            if tours > 0:\n                print(f\"[violet] tour {tours} : {t - debut_tour:.2f} s\")\n            tours += 1\n            debut_tour = t\n        dernier_indice = i\n", "arret": "# Voiture arrêtée : elle reste immobile et sert d'obstacle.\nfrom vehicle import Driver\n\ndriver = Driver()\ndriver.setCruisingSpeed(0)\ndriver.setSteeringAngle(0)\nwhile driver.step() != -1:\n    pass\n"};
+const SRC_PY = {"base": "# Contrôleur de base CoVAPSy — même code que dans Webots.\n# Appuyer sur A pour démarrer le mode auto, N pour l'arrêter.\nfrom vehicle import Driver\nfrom controller import Lidar\n\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nsensorTimeStep = 4 * basicTimeStep\n\n# Lidar\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(sensorTimeStep)\nlidar.enablePointCloud()\n\n# Clavier\nkeyboard = driver.getKeyboard()\nkeyboard.enable(sensorTimeStep)\n\nmaxSpeed = 28         # km/h\nmaxangle_degre = 16\n\ndriver.setSteeringAngle(0)\ndriver.setCruisingSpeed(0)\n\ntableau_lidar_mm = [0] * 360\n\n\ndef set_vitesse_m_s(vitesse_m_s):\n    speed = vitesse_m_s * 3.6\n    speed = max(0, min(maxSpeed, speed))\n    driver.setCruisingSpeed(speed)\n\n\ndef set_direction_degre(angle_degre):\n    angle_degre = max(-maxangle_degre, min(maxangle_degre, angle_degre))\n    driver.setSteeringAngle(-angle_degre * 3.14 / 180)   # Webots : positif = droite\n\n\ndef recule(duree_s=0.8):\n    driver.setCruisingSpeed(-3.6)\n    driver.setSteeringAngle(0)\n    for _ in range(int(duree_s * 1000 / basicTimeStep)):\n        if driver.step() == -1:\n            break\n\n\nmodeAuto = False\nprint(\"[jaune] A = mode auto, N = stop\")\n\nwhile driver.step() != -1:\n    while True:\n        currentKey = keyboard.getKey()\n        if currentKey == -1:\n            break\n        elif currentKey in (ord('n'), ord('N')):\n            if modeAuto:\n                modeAuto = False\n                print(\"[jaune] arrêt\")\n        elif currentKey in (ord('a'), ord('A')):\n            if not modeAuto:\n                modeAuto = True\n                print(\"[jaune] mode auto\")\n\n    # acquisition du lidar : tableau_lidar_mm[i] = distance à i degrés (sens trigo, 0 = devant)\n    donnees_lidar_brutes = lidar.getRangeImage()\n    for i in range(360):\n        d = donnees_lidar_brutes[-i]\n        tableau_lidar_mm[i] = 1000 * d if 0 < d < 20 else 0\n\n    if not modeAuto:\n        set_direction_degre(0)\n        set_vitesse_m_s(0)\n        continue\n\n    ##################################################\n    # Programme étudiant\n    ##################################################\n    vitesse_m_s = 0.5\n    direction_degre = 0.02 * (tableau_lidar_mm[60] - tableau_lidar_mm[-60])\n    set_direction_degre(direction_degre)\n    set_vitesse_m_s(vitesse_m_s)\n", "reactif": "# Contrôleur « réactif amélioré » CoVAPSy, pour Webots\n#  - direction : différence gauche/droite moyennée sur des secteurs de 30° à 75°\n#  - vitesse   : adaptée à la place libre devant et au braquage\n#  - marche arrière automatique si la voiture est bloquée\nfrom vehicle import Driver\nfrom controller import Lidar\n\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nsensorTimeStep = 4 * basicTimeStep\n\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(sensorTimeStep)\nkeyboard = driver.getKeyboard()\nkeyboard.enable(sensorTimeStep)\n\nMAX_KMH = 28\nMAX_ANGLE = 16\nV_MAX = 3.0          # m/s\n\n\ndef set_vitesse_m_s(v):\n    driver.setCruisingSpeed(max(-MAX_KMH, min(MAX_KMH, v * 3.6)))\n\n\ndef set_direction_degre(a):\n    a = max(-MAX_ANGLE, min(MAX_ANGLE, a))\n    driver.setSteeringAngle(-a * 3.1416 / 180)   # Webots : positif = droite\n\n\ndef secteur(t, debut, fin):\n    \"\"\"Moyenne des mesures valides entre debut et fin degrés (sens trigo).\"\"\"\n    vals = [t[i % 360] for i in range(debut, fin + 1) if t[i % 360] > 0]\n    return sum(vals) / len(vals) if vals else 3000\n\n\ndef mini(t, debut, fin):\n    vals = [t[i % 360] for i in range(debut, fin + 1) if t[i % 360] > 0]\n    return min(vals) if vals else 3000\n\n\ndef recule(direction):\n    \"\"\"Recule environ 0.8 s en braquant à l'opposé.\"\"\"\n    set_direction_degre(-direction)\n    set_vitesse_m_s(-1.0)\n    for _ in range(int(0.8 * 1000 / basicTimeStep)):\n        if driver.step() == -1:\n            return\n\n\ntableau = [0] * 360\nbloque = 0\n\nwhile driver.step() != -1:\n    brut = lidar.getRangeImage()\n    for i in range(360):\n        d = brut[-i]\n        tableau[i] = 1000 * d if 0 < d < 20 else 0\n\n    devant = mini(tableau, -12, 12)\n    direction = 0.03 * (secteur(tableau, 30, 75) - secteur(tableau, -75, -30))\n    if mini(tableau, 20, 60) < 250:      # mur proche à gauche\n        direction -= 8\n    if mini(tableau, -60, -20) < 250:    # mur proche à droite\n        direction += 8\n\n    vitesse = 0.7 + (V_MAX - 0.7) * min(1.0, max(0.0, (devant - 500) / 1500))\n    vitesse *= 1 - 0.4 * min(abs(direction), MAX_ANGLE) / MAX_ANGLE\n\n    if abs(driver.getCurrentSpeed()) < 0.3:\n        bloque += 1\n    else:\n        bloque = 0\n    if devant < 180 or bloque > 40:\n        recule(direction)\n        bloque = 0\n        continue\n\n    set_direction_degre(direction)\n    set_vitesse_m_s(vitesse)\n", "course": "# =============================================================================\n#  Contrôleur « course » CoVAPSy (la violette du simulateur) — Webots, numpy requis\n#\n#  Phase 1 – RECONNAISSANCE : un tour prudent. La voiture suit les murs au lidar,\n#            contourne les obstacles posés sur la piste et suit (sans la doubler)\n#            une voiture plus lente devant elle. Elle dessine une carte de la piste\n#            (grille de cases de 5 cm) à partir de l'odométrie. Une case n'est un mur\n#            que si le lidar l'a touchée plus souvent qu'il ne l'a traversée : une\n#            voiture qui passait n'est donc pas gardée comme un mur.\n#  Phase 2 – CALCUL : trajectoire de courbure minimale dans le couloir libre, en\n#            gardant le centre de la voiture à distance des murs dans toutes les\n#            directions, puis essai virtuel avec le vrai braquage maximum pour\n#            écarter la trajectoire des murs là où un coin de la voiture toucherait.\n#            Enfin, profil de vitesse (accélération latérale, freinage, accélération).\n#  Phase 3 – COURSE : suivi de la trajectoire (pure pursuit) en se recalant sur la\n#            carte (ICP). Si une autre voiture est devant, on planifie un dépassement\n#            (on essaie plusieurs chemins décalés et on garde le meilleur). La carte\n#            continue d'apprendre : si des « murs » disparaissent (une voiture vue\n#            pendant la reconnaissance), la trajectoire est recalculée.\n#\n#  Touches : N = stop, A = reprise.\n# =============================================================================\nimport math\nimport time\n\nimport numpy as np\nfrom vehicle import Driver\nfrom controller import Lidar\n\n# ------------------------------------------------------------------ réglages\nEMPATTEMENT = 0.257      # m\nLIDAR_AVANT = 0.20       # m, position du lidar devant l'essieu arrière\nAVANT, ARRIERE = 0.34, 0.08   # m, pare-chocs avant / arrière par rapport à l'essieu arrière\nDEMI_LARGEUR = 0.095     # m\nMAX_ANGLE = 16           # degrés, butée de direction autorisée\nMAX_KMH = 28             # limite du règlement CoVAPSy\n\nV_EXPLO = 1.3            # m/s, vitesse max pendant le tour de reconnaissance\nV_COURSE_MAX = 7.5       # m/s, vitesse max en course\nA_LAT = 5.8              # m/s², accélération latérale visée en virage\nA_ACC = 2.9              # m/s², accélération utilisée dans le profil de vitesse\nA_FREIN = 5.5            # m/s², freinage utilisé dans le profil de vitesse\nMARGE = 0.16             # m, distance entre le centre de la voiture et le premier mur, le long de la normale\nDEG_OMNI = 0.14          # m, distance au mur le plus proche, dans toutes les directions\nDEGAGE = 0.25            # m, dégagement visé par la bande élastique (coins intérieurs)\nVISE0, VISE_K = 0.35, 0.16   # pure pursuit : distance visée = VISE0 + VISE_K × vitesse\nANTICIPE = 0.15          # s, anticipation du profil de vitesse\nRES = 0.05               # m, taille d'une case de la carte\nSEUIL = 3                # impacts lidar minimum pour qu'une case soit un mur\nLIBRE = 3                # ... et vue libre moins de LIBRE fois plus souvent que touchée\nPL_OK, PL_MIN, PL_R = 0.15, 0.11, 0.14   # dépassement : marges aux murs et à l'autre voiture\nACC_VOITURE, FREIN_VOITURE, SERVO = 3.0, 6.0, math.radians(300)   # pour l'essai virtuel\nMARGE_ESSAI = 0.08       # m, essai virtuel : distance mini entre un coin de la voiture et un mur\n\n# Capteur à ultrasons arrière (facultatif) : mettre son nom Webots, ou None\nNOM_ULTRASON = None\n\n# ------------------------------------------------------------------ Webots\ndriver = Driver()\nbasicTimeStep = int(driver.getBasicTimeStep())\nDT = basicTimeStep / 1000.0\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(4 * basicTimeStep)\nkeyboard = driver.getKeyboard()\nkeyboard.enable(4 * basicTimeStep)\nultrason = None\nif NOM_ULTRASON:\n    try:\n        ultrason = driver.getDevice(NOM_ULTRASON)\n        ultrason.enable(4 * basicTimeStep)\n    except Exception:\n        ultrason = None\n\n\ndef commander(vitesse_m_s, angle_degre):\n    \"\"\"angle_degre positif = gauche.\"\"\"\n    angle_degre = max(-MAX_ANGLE, min(MAX_ANGLE, angle_degre))\n    driver.setSteeringAngle(-math.radians(angle_degre))\n    driver.setCruisingSpeed(max(-MAX_KMH, min(MAX_KMH, vitesse_m_s * 3.6)))\n\n\ndef distance_arriere():\n    \"\"\"Distance (m) mesurée par l'ultrason arrière, ou l'infini s'il n'y en a pas.\"\"\"\n    if ultrason is None:\n        return math.inf\n    d = ultrason.getValue()\n    return d if d > 0 else math.inf\n\n\ndef mod_angle(a):\n    return (a + math.pi) % (2 * math.pi) - math.pi\n\n\n# ------------------------------------------------------------------ carte\nclass Carte:\n    \"\"\"Grille d'occupation : c = nombre d'impacts lidar, l = nombre de fois où un rayon a traversé la case.\n    Une case est un mur si c >= SEUIL et l < LIBRE × c.\"\"\"\n\n    def __init__(self, taille=80.0):\n        self.n = int(taille / RES)\n        self.o = taille / 2\n        self.c = np.zeros((self.n, self.n), np.int32)\n        self.l = np.zeros((self.n, self.n), np.int32)\n        self.effaces = 0           # nombre de « murs » effacés depuis le début (cases revues libres)\n        self.dist = None           # carte des distances au mur le plus proche (calculée avec la trajectoire)\n\n    def indices(self, pts):\n        return np.floor((np.asarray(pts) + self.o) / RES).astype(int)\n\n    def mur_cases(self, i, j):\n        i = np.clip(i, 0, self.n - 1)\n        j = np.clip(j, 0, self.n - 1)\n        c = self.c[i, j]\n        return (c >= SEUIL) & (self.l[i, j] < LIBRE * c)\n\n    def occupe(self, pts):\n        k = self.indices(pts)\n        return self.mur_cases(k[..., 0], k[..., 1])\n\n    def ajouter(self, pts):\n        k = self.indices(pts)\n        ok = (k >= 0).all(-1) & (k < self.n).all(-1)\n        np.add.at(self.c, (k[ok, 0], k[ok, 1]), 1)\n\n    def degager(self, origine, pts):\n        \"\"\"Chaque rayon du lidar marque libres les cases qu'il traverse (jusqu'à 20 cm avant l'impact).\"\"\"\n        pts = np.asarray(pts)\n        if len(pts) == 0:\n            return\n        v = pts - origine\n        d = np.hypot(v[:, 0], v[:, 1])\n        fin = np.minimum(d - 0.2, 3.0)\n        s = np.arange(0.1, 3.0, 0.04)\n        u = v / np.maximum(d, 1e-9)[:, None]\n        P = origine + u[:, None, :] * s[None, :, None]            # rayons × échantillons × 2\n        garde = s[None, :] < fin[:, None]\n        k = self.indices(P)\n        garde &= (k >= 0).all(-1) & (k < self.n).all(-1)\n        lin = k[..., 0] * self.n + k[..., 1]\n        rayon = np.broadcast_to(np.arange(len(pts))[:, None], lin.shape)\n        paires = np.unique(rayon[garde].astype(np.int64) * self.n * self.n + lin[garde])   # une fois par rayon\n        cases, nb = np.unique(paires % (self.n * self.n), return_counts=True)\n        ci, cj = cases // self.n, cases % self.n\n        avant = self.mur_cases(ci, cj)\n        self.l[ci, cj] += nb\n        self.effaces += int((avant & ~self.mur_cases(ci, cj)).sum())\n\n    def points_autour(self, x, y, rayon):\n        i0, j0 = self.indices([x - rayon, y - rayon])\n        i1, j1 = self.indices([x + rayon, y + rayon])\n        i0, j0 = max(i0, 0), max(j0, 0)\n        i1, j1 = min(i1, self.n - 1), min(j1, self.n - 1)\n        c = self.c[i0:i1 + 1, j0:j1 + 1]\n        m = (c >= SEUIL) & (self.l[i0:i1 + 1, j0:j1 + 1] < LIBRE * c)\n        k = np.argwhere(m) + [i0, j0]\n        return (k + 0.5) * RES - self.o\n\n    def calculer_distances(self, rayon_max=0.40):\n        \"\"\"Distance (m) de chaque case au mur le plus proche, jusqu'à rayon_max (au-delà : rayon_max).\n        Calculée seulement sur la zone de la piste.\"\"\"\n        c = self.c\n        murs = (c >= SEUIL) & (self.l < LIBRE * c)\n        ij = np.argwhere(murs)\n        r = int(math.ceil(rayon_max / RES))\n        if len(ij) == 0:\n            self.dist, self.zone = None, None\n            return\n        i0, j0 = np.maximum(ij.min(0) - r - 2, 0)\n        i1, j1 = np.minimum(ij.max(0) + r + 2, self.n - 1)\n        m = murs[i0:i1 + 1, j0:j1 + 1]\n        dist = np.full(m.shape, rayon_max)\n        for di in range(-r, r + 1):\n            for dj in range(-r, r + 1):\n                d = math.hypot(di, dj) * RES\n                if d > rayon_max:\n                    continue\n                dec = np.zeros_like(m)\n                a0, a1 = max(di, 0), m.shape[0] + min(di, 0)\n                b0, b1 = max(dj, 0), m.shape[1] + min(dj, 0)\n                dec[a0:a1, b0:b1] = m[a0 - di:a1 - di, b0 - dj:b1 - dj]\n                np.minimum(dist, np.where(dec, d, rayon_max), out=dist)\n        self.dist, self.zone = dist, (i0, j0, rayon_max)\n\n    def distance_mur(self, pts):\n        \"\"\"Distance au mur le plus proche (carte des distances), pour un tableau de points.\"\"\"\n        pts = np.asarray(pts, float)\n        if self.dist is None:\n            return np.full(pts.shape[:-1], 1.0)\n        i0, j0, dmax = self.zone\n        k = self.indices(pts) - [i0, j0]\n        dedans = (k[..., 0] >= 0) & (k[..., 0] < self.dist.shape[0]) & (k[..., 1] >= 0) & (k[..., 1] < self.dist.shape[1])\n        out = np.full(pts.shape[:-1], dmax)\n        out[dedans] = self.dist[k[dedans][..., 0], k[dedans][..., 1]]\n        return out\n\n    def mur_proche(self, pts, cases=2):\n        \"\"\"Vrai si un mur de la carte est à moins de `cases` cases (voisinage carré) de chaque point.\"\"\"\n        pts = np.asarray(pts, float).reshape(-1, 2)\n        if len(pts) == 0:\n            return np.zeros(0, bool)\n        k = self.indices(pts)\n        res = np.zeros(len(pts), bool)\n        for di in range(-cases, cases + 1):\n            for dj in range(-cases, cases + 1):\n                res |= self.mur_cases(k[:, 0] + di, k[:, 1] + dj)\n        return res\n\n\n# ------------------------------------------------------------------ outils géométriques\ndef reechantillonner(P, pas_m):\n    \"\"\"Ré-échantillonne une boucle fermée à pas constant.\"\"\"\n    Q = np.vstack([P, P[:1]])\n    d = np.r_[0, np.cumsum(np.hypot(*np.diff(Q, axis=0).T))]\n    s = np.arange(0, d[-1], pas_m)\n    return np.c_[np.interp(s, d, Q[:, 0]), np.interp(s, d, Q[:, 1])]\n\n\ndef lisser(P, k):\n    noyau = np.ones(2 * k + 1) / (2 * k + 1)\n    ext = np.vstack([P[-k:], P, P[:k]])\n    return np.c_[np.convolve(ext[:, 0], noyau, \"valid\"), np.convolve(ext[:, 1], noyau, \"valid\")]\n\n\ndef normales(P):\n    T = np.roll(P, -1, 0) - np.roll(P, 1, 0)\n    T /= np.maximum(np.linalg.norm(T, axis=1, keepdims=True), 1e-9)\n    return np.c_[-T[:, 1], T[:, 0]]           # vers la gauche\n\n\ndef courbure(P, ds):\n    d1 = (np.roll(P, -1, 0) - np.roll(P, 1, 0)) / (2 * ds)\n    d2 = (np.roll(P, -1, 0) - 2 * P + np.roll(P, 1, 0)) / ds ** 2\n    return (d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]) / np.maximum(np.hypot(*d1.T) ** 3, 1e-9)\n\n\ndef vers_monde(local, pose):\n    x, y, th = pose\n    c, s = math.cos(th), math.sin(th)\n    local = np.asarray(local, float).reshape(-1, 2)\n    return np.c_[x + c * local[:, 0] - s * local[:, 1], y + s * local[:, 0] + c * local[:, 1]]\n\n\n# ------------------------------------------------------------------ lidar\nANGLES = -np.radians(np.arange(360))   # getRangeImage()[k] est à -k degrés\ntableau = np.zeros(360)                 # mm, sens trigo, 0 = devant (comme le code CoVAPSy), 0 = pas de mesure\n\n\ndef scan_local(brut, portee=7.0):\n    \"\"\"Points lidar dans le repère voiture (origine = essieu arrière, x devant, y à gauche).\"\"\"\n    r = np.asarray(brut, float)\n    ok = np.isfinite(r) & (r > 0.15) & (r < portee)\n    return np.c_[LIDAR_AVANT + r[ok] * np.cos(ANGLES[ok]), r[ok] * np.sin(ANGLES[ok])]\n\n\ndef secteur(debut, fin):\n    vals = [tableau[i % 360] for i in range(debut, fin + 1) if tableau[i % 360] > 0]\n    return sum(vals) / len(vals) if vals else 3000\n\n\ndef mini(debut, fin):\n    vals = [tableau[i % 360] for i in range(debut, fin + 1) if tableau[i % 360] > 0]\n    return min(vals) if vals else 3000\n\n\n# ------------------------------------------------------------------ état\ncarte = Carte()\npose = [0.0, 0.0, 0.0]        # repère = position de départ\ntemps = 0.0\nnouveau_scan = False\ndernier_scan = None\nechecs_recalage = 0\ncartographier = True\ninconnus = np.zeros((0, 2))   # points lidar (repère voiture) qui ne sont pas des murs : les autres voitures\nobstacle_devant = 99.0\nvitesse = 0.0\n\n\ndef recaler(local):\n    \"\"\"ICP point à point : ajuste la pose pour que le scan colle à la carte.\"\"\"\n    global pose\n    M = carte.points_autour(pose[0], pose[1], 7.5)\n    if len(M) < 40 or len(local) < 30:\n        return None\n    S = local[::2]\n    x, y, th = pose\n    for it in range(12):\n        W = vers_monde(S, (x, y, th))\n        d2 = ((W[:, None, :] - M[None, :, :]) ** 2).sum(2)\n        j = d2.argmin(1)\n        dist = np.sqrt(d2[np.arange(len(W)), j])\n        ok = dist < (0.30 if it < 4 else 0.12)\n        if ok.sum() < 25:\n            return False\n        A, B = W[ok], M[j[ok]]\n        ma, mb = A.mean(0), B.mean(0)\n        a, b = A - ma, B - mb\n        dth = math.atan2((a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0]).sum(), (a * b).sum())\n        c, s = math.cos(dth), math.sin(dth)\n        tx = mb[0] - (c * ma[0] - s * ma[1])\n        ty = mb[1] - (s * ma[0] + c * ma[1])\n        nx, ny = c * x - s * y + tx, s * x + c * y + ty\n        fin = abs(dth) < 1e-4 and math.hypot(nx - x, ny - y) < 1e-3\n        x, y, th = nx, ny, th + dth\n        if fin:\n            break\n    # on refuse une correction trop grande (probablement fausse)\n    if math.hypot(x - pose[0], y - pose[1]) > 0.35 or abs(th - pose[2]) > 0.3:\n        return False\n    pose = [x, y, th]\n    return True\n\n\ndef position_lidar():\n    return np.array([pose[0] + LIDAR_AVANT * math.cos(pose[2]), pose[1] + LIDAR_AVANT * math.sin(pose[2])])\n\n\ndef affiner_carte(local):\n    \"\"\"En course : on renforce les murs connus et on efface ce qui est revu libre.\n    Les points qui ne sont pas des murs connus (les autres voitures) ne sont jamais ajoutés.\"\"\"\n    if len(local) == 0:\n        return\n    W = vers_monde(local[::2], pose)\n    connu = carte.mur_proche(W, 1)\n    carte.ajouter(W[connu])\n    carte.degager(position_lidar(), W)\n\n\ndef obstacles_imprevus(local):\n    \"\"\"Points lidar devant (jusqu'à 4 m) qui ne sont pas des murs de la carte : les autres voitures.\"\"\"\n    global inconnus\n    zone = local[(local[:, 0] > 0.2) & (local[:, 0] < 4.0) & (np.abs(local[:, 1]) < 1.0)]\n    if len(zone) == 0:\n        inconnus = np.zeros((0, 2))\n    else:\n        inconnus = zone[~carte.mur_proche(vers_monde(zone, pose), 2)]\n    return distance_bande(0)\n\n\ndef distance_bande(c, demi=0.3):\n    \"\"\"Distance au plus proche obstacle imprévu dans une bande de 60 cm centrée à y = c (repère voiture).\"\"\"\n    p = inconnus[np.abs(inconnus[:, 1] - c) < demi] if len(inconnus) else inconnus\n    return float(p[:, 0].min()) if len(p) >= 3 else 99.0\n\n\ndef pas():\n    \"\"\"Un pas de simulation + odométrie + lidar (recalage, carte) quand un nouveau scan arrive.\"\"\"\n    global pose, dernier_scan, echecs_recalage, obstacle_devant, temps, nouveau_scan, vitesse\n    if driver.step() == -1:\n        return False\n    temps = driver.getTime()\n    vitesse = driver.getCurrentSpeed() / 3.6\n    braq = -driver.getSteeringAngle()  # positif = gauche\n    x, y, th = pose\n    x += vitesse * math.cos(th) * DT\n    y += vitesse * math.sin(th) * DT\n    th += vitesse / EMPATTEMENT * math.tan(braq) * DT\n    pose = [x, y, th]\n    nouveau_scan = False\n    brut = lidar.getRangeImage()\n    if brut and brut != dernier_scan:\n        dernier_scan = brut\n        nouveau_scan = True\n        b = np.asarray(brut, float)\n        idx = (-np.arange(360)) % 360\n        d = b[idx]\n        tableau[:] = np.where((d > 0) & (d < 20), 1000 * d, 0)\n        local = scan_local(brut)\n        if cartographier:\n            # Repérage : on se fie à l'odométrie pour dessiner la carte (le recalage glisse le long des lignes droites)\n            W = vers_monde(local, pose)\n            carte.ajouter(W)\n            carte.degager(position_lidar(), W)\n        else:\n            ok = recaler(local)\n            echecs_recalage = 0 if ok else echecs_recalage + 1\n            if ok:\n                affiner_carte(local)\n            obstacle_devant = obstacles_imprevus(local)\n    return True\n\n\n# ------------------------------------------------------------------ conduite prudente (reconnaissance, secours)\nreac = {}\n\n\ndef conduite_prudente(v_max):\n    \"\"\"Conduite au lidar : suivi des murs, contournement des obstacles posés sur la piste,\n    et suivi (sans doubler) d'une voiture qui roule devant.\"\"\"\n    if temps < reac.get(\"recul_fin\", -1):\n        if distance_arriere() < 0.15:\n            reac[\"recul_fin\"] = -1\n        else:\n            commander(-1.0, -reac[\"recul_dir\"])\n            return\n    devant = mini(-12, 12)\n    direction = 0.03 * (secteur(30, 75) - secteur(-75, -30))\n    if mini(20, 60) < 250:\n        direction -= 8\n    if mini(-60, -20) < 250:\n        direction += 8\n    v = 0.7 + (v_max - 0.7) * min(1.0, max(0.0, (devant - 500) / 1500))\n    v *= 1 - 0.4 * min(abs(direction), MAX_ANGLE) / MAX_ANGLE\n\n    # couloir libre dans la direction phi (degrés) : distance avant le premier point à moins de 17 cm de l'axe\n    a = np.arange(-100, 101)\n    d = tableau[a % 360] / 1000\n    garde = (d > 0.05) & (d < 1.6)\n    px, py = d[garde] * np.cos(np.radians(a[garde])), d[garde] * np.sin(np.radians(a[garde]))\n\n    def libre(phi, point=False):\n        c, s = math.cos(math.radians(phi)), math.sin(math.radians(phi))\n        u, w = px * c + py * s, -px * s + py * c\n        b = (u > 0) & (u < 1.2) & (np.abs(w) < 0.17)\n        if not b.any():\n            return (1.2, None) if point else 1.2\n        k = np.nonzero(b)[0][np.argmin(u[b])]\n        return (float(u[k]), (px[k], py[k])) if point else float(u[k])\n\n    phi_r = max(-MAX_ANGLE, min(MAX_ANGLE, direction)) * 1.6\n    f_r, p_bloc = libre(phi_r, True)\n    # obstacle fixe ou voiture qui roule ? on regarde si le point qui bloque se déplace sur la carte\n    # (position de la voiture par odométrie) : un mur reste en place, une voiture avance\n    if nouveau_scan:\n        if p_bloc is not None and 0.3 < f_r < 1.15:\n            pw = vers_monde([[LIDAR_AVANT + p_bloc[0], p_bloc[1]]], pose)[0]\n            hist = reac.setdefault(\"hist\", [])\n            if hist and np.hypot(*(pw - hist[-1][1])) > 0.3:\n                hist.clear()                              # ce n'est plus le même objet\n            hist.append((temps, pw))\n            while len(hist) > 1 and temps - hist[0][0] > 0.5:\n                hist.pop(0)\n            if temps - hist[0][0] > 0.25:\n                dep = pw - hist[0][1]\n                vit_obst = float(np.hypot(*dep)) / (temps - hist[0][0])\n                cap = np.array([math.cos(pose[2]), math.sin(pose[2])])\n                indice_mobile = 1 if 0.25 < vit_obst < 3.0 and dep @ cap > 0.6 * np.hypot(*dep) else 0\n                reac[\"mobile\"] = 0.6 * reac.get(\"mobile\", 0) + 0.4 * indice_mobile\n        else:\n            reac[\"mobile\"] = 0\n            reac[\"hist\"] = []\n        # derrière une voiture arrêtée depuis plus d'1 s : on la considère comme un obstacle et on la contourne\n        reac[\"attente\"] = reac.get(\"attente\", 0) + (temps - reac.get(\"t_att\", temps)) if f_r < 0.75 and abs(vitesse) < 0.15 else 0\n        reac[\"t_att\"] = temps\n        if reac[\"attente\"] > 1.0:\n            reac[\"mobile\"] = 0\n        reac[\"f_prec\"], reac[\"f_t\"] = f_r, temps\n    if 0.3 < f_r < 1.15 and reac.get(\"mobile\", 0) > 0.5:\n        v = min(v, max(0.0, 1.6 * (f_r - 0.45)))          # une voiture devant : on la suit à distance\n    elif f_r < 0.9:\n        best, fb = phi_r, -1.0                            # un obstacle : on prend le passage le plus dégagé\n        for phi in range(-70, 71, 2):\n            f = libre(phi) - 0.002 * abs(phi - phi_r)\n            if f > fb:\n                fb, best = f, phi\n        direction = max(-MAX_ANGLE, min(MAX_ANGLE, best / 1.6))\n        v = min(v, 0.45 + 0.6 * max(0.0, fb))\n    if temps < reac.get(\"force_fin\", -1):                 # juste après une marche arrière\n        direction = reac[\"force_dir\"]\n        v = min(v, 0.6)\n    reac[\"bloque\"] = reac.get(\"bloque\", 0) + DT if abs(vitesse) < 0.08 else 0      # secondes à l'arrêt\n    if devant < 180 or reac[\"bloque\"] > 1.3:\n        # coincée : on recule en braquant pour pivoter vers le côté le plus dégagé ; si ça se répète,\n        # on recule plus longtemps et on braque à fond (la voiture est sans doute en travers du couloir)\n        reac[\"reculs\"] = [t for t in reac.get(\"reculs\", []) if temps - t < 8] + [temps]\n        n = len(reac[\"reculs\"])\n        esc = direction\n        if n >= 2 or abs(esc) < 6:\n            esc = (1 if secteur(20, 90) >= secteur(-90, -20) else -1) * MAX_ANGLE\n        reac[\"recul_fin\"] = temps + 0.8 + 0.4 * min(n - 1, 3)\n        reac[\"recul_dir\"] = esc\n        reac[\"bloque\"] = 0\n        reac[\"force_dir\"], reac[\"force_fin\"] = esc, reac[\"recul_fin\"] + 1.0\n        commander(-1.0, -esc)\n        return\n    commander(v, direction)\n\n\n# ------------------------------------------------------------------ trajectoire\ndef ligne_tendue(P, N, bas, haut):\n    \"\"\"Trajectoire de courbure minimale dans le couloir [bas, haut] (décalages le long des normales N de P),\n    en restant à au moins DEGAGE des murs de la carte, puis son profil de vitesse.\"\"\"\n    bas, haut = bas.copy(), haut.copy()\n    a = np.clip(np.zeros(len(P)), bas, haut)\n    for it in range(4000):\n        Q = P + a[:, None] * N\n        if it % 200 == 199:\n            # contrôle dans la carte : les coins intérieurs vifs ne sont pas vus le long des normales\n            d = carte.distance_mur(Q)\n            trop = d < DEGAGE\n            if trop.any():\n                d_plus = carte.distance_mur(Q + 0.05 * N)\n                d_moins = carte.distance_mur(Q - 0.05 * N)\n                pousse = DEGAGE - d + 0.02\n                mur_a_gauche = d_plus < d_moins\n                g = trop & mur_a_gauche\n                dr = trop & ~mur_a_gauche\n                haut[g] = np.maximum(bas[g], np.minimum(haut[g], a[g] - pousse[g]))\n                bas[dr] = np.minimum(haut[dr], np.maximum(bas[dr], a[dr] + pousse[dr]))\n                a = np.clip(a, bas, haut)\n                Q = P + a[:, None] * N\n        delta = 0.5 * (np.roll(Q, 1, 0) + np.roll(Q, -1, 0)) - Q\n        a = np.clip(a + 0.5 * (delta * N).sum(1), bas, haut)\n    Q = P + a[:, None] * N\n    ds = 0.05\n    Q = reechantillonner(lisser(reechantillonner(Q, ds), 2), ds)\n    k = np.abs(courbure(Q, ds))\n    k = np.convolve(np.r_[k[-3:], k, k[:3]], np.ones(7) / 7, \"valid\")\n    v = np.minimum(V_COURSE_MAX, np.sqrt(A_LAT / np.maximum(k, 1e-4)))\n    n = len(v)\n    for _ in range(2):                        # deux tours pour gérer la boucle fermée\n        for i in range(n):                    # accélération limitée\n            v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * A_ACC * ds))\n        for i in range(n - 1, -1, -1):        # freinage limité\n            v[i] = min(v[i], math.sqrt(v[(i + 1) % n] ** 2 + 2 * A_FREIN * ds))\n    return Q, v\n\n\ndef essai_virtuel(Q, V):\n    \"\"\"On « roule » virtuellement sur la trajectoire (pure pursuit, braquage limité, servo limité) :\n    renvoie les endroits où un coin de la voiture passerait à moins de 3 cm d'un mur de la carte.\"\"\"\n    n, dt, b_max = len(Q), 0.01, math.radians(MAX_ANGLE)\n    x, y = Q[0]\n    th = math.atan2(Q[1][1] - Q[0][1], Q[1][0] - Q[0][0])\n    v, braq, idx, parcouru, dernier = V[0], 0.0, 0, 0.0, -1.0\n    coins = np.array([[-ARRIERE, DEMI_LARGEUR], [-ARRIERE, -DEMI_LARGEUR], [AVANT, DEMI_LARGEUR], [AVANT, -DEMI_LARGEUR],\n                      [0.13, DEMI_LARGEUR], [0.13, -DEMI_LARGEUR], [AVANT, 0]])\n    touches = []\n    while parcouru < n * 0.05 * 1.15:\n        fen = (idx + np.arange(-5, 30)) % n\n        idx = int(fen[np.argmin((Q[fen, 0] - x) ** 2 + (Q[fen, 1] - y) ** 2)])\n        vise = VISE0 + VISE_K * v\n        j = idx\n        while math.hypot(Q[j % n, 0] - x, Q[j % n, 1] - y) < vise and j - idx < n // 2:\n            j += 1\n        q = Q[j % n]\n        alpha = math.atan2(q[1] - y, q[0] - x) - th\n        cible = max(-b_max, min(b_max, math.atan2(2 * EMPATTEMENT * math.sin(alpha), vise)))\n        braq += max(-SERVO * dt, min(SERVO * dt, cible - braq))\n        vc = V[(idx + int(ANTICIPE * v / 0.05) + 2) % n]\n        v = min(vc, v + ACC_VOITURE * dt) if vc > v else max(vc, v - FREIN_VOITURE * dt)\n        x += v * math.cos(th) * dt\n        y += v * math.sin(th) * dt\n        th += v / EMPATTEMENT * math.tan(braq) * dt\n        parcouru += v * dt\n        if parcouru - dernier < 0.25:\n            continue\n        pts = vers_monde(coins, (x, y, th))\n        d = carte.distance_mur(pts)\n        if d.min() < MARGE_ESSAI:\n            k = int(np.argmin(d))\n            touches.append((pts[k], np.array([x, y])))\n            dernier = parcouru\n    return touches\n\n\ndef calculer_trajectoire(chemin):\n    t0 = time.perf_counter()\n    carte.calculer_distances()\n    # 1) chemin du tour de reconnaissance, lissé -> axe de référence\n    P = reechantillonner(np.array(chemin), 0.10)\n    P = reechantillonner(lisser(P, 5), 0.20)\n    N = normales(P)\n    n = len(P)\n    # 2) couloir praticable : centre de la voiture à au moins DEG_OMNI de tout mur (un mur fin posé en\n    #    travers est ainsi bien vu), et à au moins MARGE du premier mur le long de la normale\n    s = np.round(np.arange(-2.0, 2.0001, 0.02), 2)            # décalages testés ; s[100] = 0\n    ok = carte.distance_mur(P[:, None, :] + s[None, :, None] * N[:, None, :]) >= DEG_OMNI   # n × 201\n    g = np.arange(0.02, 2.0, 0.02)\n    occ_g = carte.occupe(P[:, None, :] + g[None, :, None] * N[:, None, :])\n    occ_d = carte.occupe(P[:, None, :] - g[None, :, None] * N[:, None, :])\n    libre_g = np.where(occ_g.any(1), g[occ_g.argmax(1)], 2.0)\n    libre_d = np.where(occ_d.any(1), g[occ_d.argmax(1)], 2.0)\n    bas, haut = np.zeros(n), np.zeros(n)\n    for i in range(n):\n        h, b = libre_g[i] - MARGE, -(libre_d[i] - MARGE)\n        cand = np.nonzero(ok[i, 50:151])[0] + 50          # décalages dégagés à moins d'1 m du chemin\n        if len(cand):\n            k0 = int(cand[np.argmin(np.abs(cand - 100))])\n            kh = kb = k0\n            while kh + 1 < len(s) and ok[i, kh + 1]:\n                kh += 1\n            while kb - 1 >= 0 and ok[i, kb - 1]:\n                kb -= 1\n            h, b = min(h, s[kh]), max(b, s[kb])\n        if b > h:\n            b = h = (b + h) / 2\n        bas[i], haut[i] = b, h\n    # 3) bande élastique, puis essai virtuel : là où un coin de la voiture toucherait, on écarte la trajectoire\n    Q, V = ligne_tendue(P, N, bas, haut)\n    for essai in range(5):\n        touches = essai_virtuel(Q, V)\n        if not touches:\n            break\n        for mur, centre in touches:\n            b = int(np.argmin(((P - centre) ** 2).sum(1)))\n            cote = (mur - P[b]) @ N[b]\n            for k in range(-5, 6):\n                i = (b + k) % n\n                pousse = 0.04 * (1 - abs(k) / 6)\n                if cote > 0:\n                    haut[i] = max(bas[i], haut[i] - pousse)\n                else:\n                    bas[i] = min(haut[i], bas[i] + pousse)\n        Q, V = ligne_tendue(P, N, bas, haut)\n    print(f\"[violet] trajectoire calculée en {time.perf_counter() - t0:.2f} s : {len(Q) * 0.05:.1f} m, \"\n          f\"temps prévu {(0.05 / V).sum():.2f} s, vitesse {V.min():.1f} à {V.max():.1f} m/s\")\n    return Q, V\n\n\n# ------------------------------------------------------------------ suivi + dépassement\nQ = V = NQ = None\nindice = None\nd_prec = 0.0          # décalage choisi au pas précédent\nautre_v = None        # dernière observation de l'autre voiture\nv_obs = 0.0           # sa vitesse estimée le long de la trajectoire\ndepasse = False\nplan = None           # dernier plan (recalculé à chaque scan)\n\n\ndef planifier(i0, d0, v, autre):\n    \"\"\"On essaie plusieurs chemins qui passent du décalage actuel d0 à un décalage d1 (gauche ou droite),\n    on élimine ceux qui touchent un mur de la carte ou rencontrent l'autre voiture (en prévoyant où elle\n    sera), et on prend le meilleur. Renvoie le décalage visé, une vitesse max et la distance libre devant.\"\"\"\n    global d_prec\n    n, M, PAS = len(Q), 50, 2             # 50 pas de 10 cm = 5 m devant\n    DS = np.round(np.arange(-0.5, 0.501, 0.05), 2)\n    jj = (i0 + np.arange(M + 1) * PAS) % n\n    q, nn = Q[jj], NQ[jj]\n    T = np.c_[nn[:, 1], -nn[:, 0]]\n    # 1) place libre pour chaque pas et chaque décalage : 2 = dégagé, 1 = près d'un mur, 0 = trop près\n    dm = carte.distance_mur(q[:, None, :] + DS[None, :, None] * nn[:, None, :])\n    libre = np.where(dm > PL_OK, 2, np.where(dm > PL_MIN, 1, 0))\n    # 2) temps de passage prévus le long de la trajectoire\n    tps = np.zeros(M + 1)\n    vv = max(v, 0.3)\n    for m in range(1, M + 1):\n        vv = min(V[jj[m]], math.sqrt(vv * vv + 2 * A_ACC * 0.1))\n        tps[m] = tps[m - 1] + 0.1 / max(vv, 0.3)\n    base = autre[\"pts\"] if autre[\"visible\"] else np.vstack([autre[\"pts\"], autre[\"pts\"] + 0.3 * autre[\"T\"]])\n    R2 = (PL_R if autre[\"visible\"] else PL_R + 0.03) ** 2\n    vit_autre = 0.6 * autre[\"v\"] * (autre[\"age\"] + tps)          # elle avance (prévision prudente)\n    base_t = base[None, :, :] + (vit_autre[:, None] * autre[\"T\"][None, :])[:, None, :]   # (M+1) × K × 2\n    v_min_proche = V[jj[:16]].min()\n    virage = v_min_proche < 2.5 and autre[\"v\"] > 1.0\n    deja_a_cote = abs(d0) > 0.15 and abs(d_prec) > 0.08\n    m_ar = np.arange(M + 1)\n    best = None\n    for d1 in DS:\n        for L in (1.0, 1.6, 2.4):\n            if virage and not deja_a_cote and abs(d1) > 0.1:\n                continue\n            if abs(d1 - d0) / L > 0.35:\n                continue\n            u = np.minimum(1, m_ar * 0.1 / L)\n            d = d0 + (d1 - d0) * u * u * (3 - 2 * u)\n            idx = np.clip(np.round((d + 0.5) / 0.05).astype(int), 0, len(DS) - 1)\n            l = libre[m_ar, idx]\n            murs = ((l[6:] == 0) * 1.0 + (l[6:] == 1) * 0.02).sum()\n            p_ar = q + d[:, None] * nn\n            p_av = p_ar + 0.3 * T\n            d2 = np.minimum(((base_t - p_ar[:, None, :]) ** 2).sum(2), ((base_t - p_av[:, None, :]) ** 2).sum(2)).min(1)\n            touche = d2 < R2\n            coll = float(np.argmax(touche) * 0.1) if touche.any() else 99.0\n            dmin2 = d2[:16].min() if coll == 99.0 else d2[:max(16, int(coll * 10) + 1)].min()\n            cout = (1000 * murs + (100 + 10 * (5 - coll) + 60 * max(0.0, 0.3 - math.sqrt(dmin2)) if coll < 99 else 0)\n                    + 1.5 * abs(d1) + 2.5 * abs(d1 - d_prec) + 0.2 * (2.4 - L))\n            if best is None or cout < best[0]:\n                best = (cout, d1, d, min(coll, 0.6) if murs >= 1 else coll)\n    if best is None:\n        best = (0, 0.0, np.full(M + 1, d0), 99.0)\n    _, d1, ds, bloque = best\n    d_prec = d1\n    # distance à laquelle on rencontrerait l'autre voiture là où elle est maintenant (si elle freine fort)\n    pts_chemin = q + ds[:, None] * nn\n    r_b = 0.22 if virage else 0.15\n    proche = (((autre[\"pts\"][None, :, :] - pts_chemin[:, None, :]) ** 2).sum(2) < r_b * r_b).any(1)\n    if proche.any():\n        bloque = min(bloque, float(np.argmax(proche) * 0.1))\n    # vitesse : le chemin décalé peut être plus serré que la trajectoire\n    vmax = 99.0\n    for m in range(1, M, 2):\n        P3 = pts_chemin[[m - 1, m, m + 1]]\n        a_, b_ = P3[1] - P3[0], P3[2] - P3[1]\n        cr = abs(a_[0] * b_[1] - a_[1] * b_[0])\n        k = 2 * cr / max(np.linalg.norm(a_) * np.linalg.norm(b_) * np.linalg.norm(P3[2] - P3[0]), 1e-6)\n        vk = math.sqrt(A_LAT / max(k, 1e-3))\n        vmax = min(vmax, math.sqrt(vk * vk + 2 * A_FREIN * m * 0.1))\n    return {\"ds\": ds, \"d1\": d1, \"vmax\": vmax, \"bloque\": bloque}\n\n\ndef suivre():\n    \"\"\"Pure pursuit sur la trajectoire, avec dépassement si une autre voiture est devant.\"\"\"\n    global indice, autre_v, v_obs, depasse, plan, d_prec\n    x, y, th = pose\n    n = len(Q)\n    if indice is None:\n        indice = int(np.argmin(np.hypot(Q[:, 0] - x, Q[:, 1] - y)))\n    else:\n        fen = (indice + np.arange(-20, 60)) % n\n        indice = int(fen[np.argmin(np.hypot(Q[fen, 0] - x, Q[fen, 1] - y))])\n    v = vitesse\n    vise = VISE0 + VISE_K * max(v, 0)\n    i0 = indice\n    ecart = (np.array([x, y]) - Q[i0]) @ NQ[i0]          # notre décalage (gauche +)\n    # ---- l'autre voiture : points lidar qui ne sont pas des murs\n    if nouveau_scan:\n        vus_loc = inconnus[(inconnus[:, 0] < 3.0) & (np.abs(inconnus[:, 1]) < 1.0)] if len(inconnus) else inconnus\n        if len(vus_loc) >= 3:\n            vus = vers_monde(vus_loc, pose)\n            cx, cy = vus.mean(0)\n            fen = i0 + np.arange(-10, 80)\n            b = int(fen[np.argmin(((Q[fen % n] - [cx, cy]) ** 2).sum(1))])\n            kb = b - i0\n            if autre_v and temps - autre_v[\"t\"] < 0.6 and temps > autre_v[\"t\"]:\n                ds = ((i0 - autre_v[\"i0\"] + n // 2) % n - n // 2) + (kb - autre_v[\"kb\"])\n                v_obs = 0.75 * v_obs + 0.25 * max(0.0, min(8.0, ds * 0.05 / (temps - autre_v[\"t\"])))\n            autre_v = {\"t\": temps, \"pts\": vus, \"b\": b, \"i0\": i0, \"kb\": kb, \"x_min\": float(vus_loc[:, 0].min())}\n    autre = None\n    if autre_v and (temps - autre_v[\"t\"] < 0.05 or (temps - autre_v[\"t\"] < 1.5 and autre_v[\"x_min\"] < 0.9)):\n        q0, q1 = Q[autre_v[\"b\"] % n], Q[(autre_v[\"b\"] + 4) % n]\n        L = max(np.linalg.norm(q1 - q0), 1e-9)\n        age = temps - autre_v[\"t\"]\n        autre = {\"pts\": autre_v[\"pts\"], \"T\": (q1 - q0) / L, \"v\": v_obs, \"age\": age, \"visible\": age < 0.05}\n    cible_d, vmax_plan, sur_chemin = 0.0, 99.0, 99.0\n    if autre is not None:\n        if nouveau_scan or plan is None:\n            plan = planifier(i0, ecart, v, autre)\n        m_v = min(max(vise / 0.1, 0), 50)\n        ds = plan[\"ds\"]\n        cible_d = ds[int(m_v)] + (ds[min(50, int(math.ceil(m_v)))] - ds[int(m_v)]) * (m_v % 1)\n        vmax_plan, sur_chemin = plan[\"vmax\"], plan[\"bloque\"]\n        depasse = abs(plan[\"d1\"]) > 0.08 or abs(ecart) > 0.15\n    else:\n        d_prec, plan, depasse = 0.0, None, False\n    # ---- pure pursuit vers le point visé (décalé de cible_d le long de la normale)\n    j = i0\n    while math.hypot(Q[j % n, 0] - x, Q[j % n, 1] - y) < vise and j - i0 < n // 2:\n        j += 1\n    cible = Q[j % n] + cible_d * NQ[j % n]\n    alpha = math.atan2(cible[1] - y, cible[0] - x) - th\n    braq = math.atan2(2 * EMPATTEMENT * math.sin(alpha), vise)\n    # sécurité de proximité : on ne braque pas vers une voiture qui est juste à côté de notre avant\n    proche = inconnus if (autre is not None and len(inconnus)) else np.zeros((0, 2))\n    if ((proche[:, 0] < 0.6) & (proche[:, 1] > 0.05) & (proche[:, 1] < 0.26)).any():\n        braq = min(braq, 0)\n    if ((proche[:, 0] < 0.6) & (proche[:, 1] < -0.05) & (proche[:, 1] > -0.26)).any():\n        braq = max(braq, 0)\n    vc = min(V[(i0 + int(ANTICIPE * v / 0.05) + 2) % n], vmax_plan)\n    v_autre = 0.5 * autre[\"v\"] if autre is not None else 0.0\n    vc = max(0.3, min(vc, math.sqrt(v_autre ** 2 + 2 * A_FREIN * max(0.0, sur_chemin - 0.5))))\n    if ((proche[:, 0] < 0.42 + 0.1 * v) & (np.abs(proche[:, 1]) < 0.13)).any():\n        vc = 0.3                                          # quelque chose juste devant le pare-chocs\n    commander(vc, math.degrees(braq))\n    return i0\n\n\n# ================================================================== programme\nprint(\"[violet] phase 1 : tour de reconnaissance (N = stop, A = reprise)\")\nactif = True\nchemin = []\ndistance = 0.0\nphase = \"RECONNAISSANCE\"\nref = None\nstable = 0\ndebut_tour = None\ndernier_indice = 0\ntours = 0\nbloque = 0\nsecours_fin = -1.0\neffaces_calc = 0\nt_calc = 0.0\ncontresens = 0\n\nwhile pas():\n    k = keyboard.getKey()\n    while k != -1:\n        if k in (ord('N'), ord('n')):\n            actif = False\n        elif k in (ord('A'), ord('a')):\n            actif = True\n        k = keyboard.getKey()\n    if not actif:\n        commander(0, 0)\n        continue\n\n    if phase == \"RECONNAISSANCE\":\n        if ref is None:\n            # le tour de repérage commence quand la voiture roule droit depuis 0,5 s\n            conduite_prudente(V_EXPLO)\n            stable = stable + 1 if vitesse > 0.3 and abs(driver.getSteeringAngle()) < math.radians(4) else 0\n            if stable * DT > 0.5:\n                ref = list(pose)\n            continue\n        if chemin:\n            distance += math.hypot(pose[0] - chemin[-1][0], pose[1] - chemin[-1][1])\n        prec = chemin[-1] if chemin else None\n        chemin.append(pose[:2])\n        conduite_prudente(V_EXPLO)\n        # ligne de départ : perpendiculaire à la direction de la voiture au début du repérage\n        c, s = math.cos(ref[2]), math.sin(ref[2])\n\n        def loc(p):\n            dx, dy = p[0] - ref[0], p[1] - ref[1]\n            return dx * c + dy * s, -dx * s + dy * c\n        b = loc(pose)\n        a = loc(prec) if prec else None\n        d_cap = abs(mod_angle(pose[2] - ref[2]))\n        franchie = (a is not None and a[0] < 0 <= b[0] and abs(b[1]) < 1.5) or (math.hypot(*b) < 0.5 and d_cap < 0.8)\n        if distance > 8 and franchie:\n            print(f\"[violet] tour de reconnaissance terminé ({distance:.1f} m, t = {temps:.1f} s)\")\n            print(\"[violet] phase 2 : calcul de la trajectoire optimale\")\n            cartographier = False\n            effaces_calc, t_calc = carte.effaces, temps\n            Q, V = calculer_trajectoire(chemin)\n            NQ = normales(Q)\n            if hasattr(driver, \"afficherTrace\"):        # uniquement dans le simulateur\n                driver.afficherTrace(Q[::4].tolist())\n            phase = \"COURSE\"\n            print(\"[violet] phase 3 : COURSE !\")\n            debut_tour = temps\n        continue\n\n    # ---------------------------------------------------------------- COURSE\n    # à contresens (cap opposé à la trajectoire depuis 0,5 s) : on se fie à la conduite prudente\n    if indice is not None:\n        tang = Q[(indice + 2) % len(Q)] - Q[indice]\n        contresens = contresens + 1 if abs(mod_angle(pose[2] - math.atan2(tang[1], tang[0]))) > math.radians(110) else 0\n    # bloquée contre un mur : marche arrière puis conduite de secours pendant 2 s\n    bloque = bloque + 1 if abs(vitesse) < 0.05 else 0\n    if bloque * DT > 1.0:\n        bloque = 0\n        secours_fin = temps + 2.0\n        reac[\"recul_fin\"], reac[\"recul_dir\"] = temps + 0.8, 0\n    if (temps < secours_fin or echecs_recalage > 8 or contresens * DT > 0.5\n            or (mini(-10, 10) < 200 and obstacle_devant > 1.0)):\n        conduite_prudente(1.0)\n        if contresens * DT > 0.5:\n            secours_fin = max(secours_fin, temps + 1.5)\n            contresens = 0\n        indice = None\n        continue\n    # des « murs » ont disparu de la carte (une voiture vue pendant la reconnaissance) : nouvelle trajectoire,\n    # au calme (pas d'autre voiture en vue, pas en dépassement), au plus une fois toutes les 8 s\n    if (carte.effaces - effaces_calc > 12 and temps - t_calc > 8 and not depasse and len(inconnus) == 0\n            and (autre_v is None or temps - autre_v[\"t\"] > 2)):\n        effaces_calc, t_calc = carte.effaces, temps\n        print(\"[violet] des obstacles de la carte ont disparu : nouvelle trajectoire\")\n        Q, V = calculer_trajectoire(chemin)\n        NQ = normales(Q)\n        indice, d_prec, autre_v, v_obs, plan = None, 0.0, None, 0.0, None\n        if hasattr(driver, \"afficherTrace\"):\n            driver.afficherTrace(Q[::4].tolist())\n    i = suivre()\n    if dernier_indice > 0.9 * len(Q) and i < 0.1 * len(Q):  # ligne de départ franchie\n        if tours > 0:\n            print(f\"[violet] tour {tours} : {temps - debut_tour:.2f} s\")\n        tours += 1\n        debut_tour = temps\n    dernier_indice = i\n", "arret": "# Voiture arrêtée : elle reste immobile et sert d'obstacle.\nfrom vehicle import Driver\n\ndriver = Driver()\ndriver.setCruisingSpeed(0)\ndriver.setSteeringAngle(0)\nwhile driver.step() != -1:\n    pass\n"};
 SRC_PY.axel = "# Copyright 1996-2022 Cyberbotics Ltd.\n#\n# Controle de la voiture TT-02 simulateur CoVAPSy pour Webots 2023b\n# Inspir\u00e9 de vehicle_driver_altino controller\n# K\u00e9vin Hoarau, Anthony Juton, Bastien Lhopitallier, Martin Raynaud\n# ao\u00fbt 2023\n#\n# Programme d'Axel et Lucas : moyenne du lidar par secteurs de 5\u00b0, la voiture vise le secteur le plus d\u00e9gag\u00e9.\n# Les lignes marqu\u00e9es \u00ab CORRECTION \u00bb ont \u00e9t\u00e9 modifi\u00e9es pour que la voiture fasse le tour sans rester bloqu\u00e9e.\n\nfrom vehicle import Driver\nfrom controller import Lidar\nimport numpy as np\nimport time\n\ndriver = Driver()\n\nbasicTimeStep = int(driver.getBasicTimeStep())\nsensorTimeStep = 4 * basicTimeStep\n\n#Lidar\nlidar = Lidar(\"RpLidarA2\")\nlidar.enable(sensorTimeStep)\nlidar.enablePointCloud() \n\n#clavier\nkeyboard = driver.getKeyboard()\nkeyboard.enable(sensorTimeStep)\n\n# vitesse en km/h\nspeed = 0\nmaxSpeed = 28 #km/h\n\n# angle de la direction\nangle = 0\nmaxangle_degre = 16\n\n\n# mise a z\u00e9ro de la vitesse et de la direction\ndriver.setSteeringAngle(angle)\ndriver.setCruisingSpeed(speed)\n\ntableau_lidar_mm=[0]*360\n\ndef set_vitesse_m_s(vitesse_m_s):\n    speed = vitesse_m_s*3.6\n    if speed > maxSpeed :\n        speed = maxSpeed\n    if speed < 0 :\n        speed = 0\n    driver.setCruisingSpeed(speed)\n     \ndef set_direction_degre(angle_degre):\n    if angle_degre > maxangle_degre:\n        angle_degre = maxangle_degre\n    elif angle_degre < -maxangle_degre:\n        angle_degre = -maxangle_degre   \n    angle = -angle_degre * 3.14/180\n    driver.setSteeringAngle(angle)\n\n# CORRECTION : l'ancienne fonction recule() faisait time.sleep(1), ce qui bloque tout le contr\u00f4leur\n# (Webots n'avance plus pendant ce temps). On compte maintenant les pas de simulation \u00e0 la place.\nDUREE_RECUL = int(0.8 * 1000 / basicTimeStep)     # 0,8 s de marche arri\u00e8re\npas_bloque = 0                                     # nombre de pas o\u00f9 la voiture n'avance pas\nrecul_restant = 0                                  # nombre de pas de marche arri\u00e8re qui restent\nangle_recul = 0\nvitesse_m_s = 0                                    # CORRECTION : valeurs de d\u00e9part (sinon erreur au 1er tour de boucle)\nangle_degre = 0\n\n# mode auto desactive\nmodeAuto = False\nprint(\"cliquer sur la vue 3D pour commencer\")\nprint(\"a pour mode auto (pas de mode manuel sur TT02_jaune), n pour stop\")\n\nwhile driver.step() != -1:\n    while True:\n\n    #acquisition des donnees du lidar\n         # recuperation de la touche clavier\n        currentKey = keyboard.getKey()\n \n        if currentKey == -1:\n            break\n       \n        elif currentKey == ord('n') or currentKey == ord('N'):\n            if modeAuto :\n                modeAuto = False\n                print(\"--------Modes Auto TT-02 jaune D\u00e9sactiv\u00e9-------\")\n        elif currentKey == ord('a') or currentKey == ord('A'):\n            if not modeAuto : \n                modeAuto = True\n                print(\"------------Mode Auto TT-02 jaune Activ\u00e9-----------------\")\n    en_recul = 0     # CORRECTION : s'appelait \u00ab recule \u00bb, comme la fonction, et n'\u00e9tait remis \u00e0 0 qu'avec le clavier\n    \n    #acquisition des donnees du lidar\n    donnees_lidar_brutes = lidar.getRangeImage()\n    donnees_lidar_brutes_moy = [0]*72\n    index_tab_moy=0\n    j=0\n    for i in range(360) :        \n        if (donnees_lidar_brutes[-i]>0) and (donnees_lidar_brutes[-i]<20) :\n            tableau_lidar_mm[i] = 1000*donnees_lidar_brutes[-i]\n        else :\n            tableau_lidar_mm[i] = 0\n        \n        j +=1\n        if j == 5:\n            for a in range(5):\n                donnees_lidar_brutes_moy[index_tab_moy] += tableau_lidar_mm[i-j]\n                j -= 1\n            donnees_lidar_brutes_moy[index_tab_moy] /= 5\n            donnees_lidar_brutes_moy[index_tab_moy] -= 150\n            if 19 <= index_tab_moy <= 53:\n                donnees_lidar_brutes_moy[index_tab_moy] = 0\n    \n            #print(\"index\", index_tab_moy, donnees_lidar_brutes_moy[index_tab_moy])\n    \n            index_tab_moy += 1\n            j = 0\n    valeur_max = donnees_lidar_brutes_moy[0]\n    index_max = 0\n    for k in range(72) :\n        if valeur_max < donnees_lidar_brutes_moy[k] :\n            valeur_max = donnees_lidar_brutes_moy[k]\n            index_max = k\n        else :\n            valeur_max = valeur_max\n            \n    print(\"/////////////////////////////\")       \n    print(\"index\", index_max, valeur_max)\n    print(\"Distance :\")\n    print(\"Gauche ///  Face   /// Droit \")\n    print(f\"{donnees_lidar_brutes_moy[18]:.2f} /// {donnees_lidar_brutes_moy[0]:.2f} /// {donnees_lidar_brutes_moy[54]:.2f}\")    \n    \n    if not modeAuto:\n        set_direction_degre(0)\n        set_vitesse_m_s(0)\n   \n    if modeAuto:\n    \n    ########################################################\n    # Programme etudiant avec\n    #    - le tableau tableau_lidar_mm\n    #    - la fonction set_direction_degre(...)\n    #    - la fonction set_vitesse_m_s(...)\n    #######################################################\n        #print(\"Distance au mur\" , tableau_lidar_mm[-80])\n        #un secteur par tranche de 5\u00b0 donc 72 secteurs num\u00e9rot\u00e9s de 0 \u00e0 71\n        if index_max>36:\n            delta=index_max-72\n        else :\n            delta=index_max\n        \n        #if (0<=index_max<5) or (67<=index_max<72) :\n        if donnees_lidar_brutes_moy[0]>2000 :\n                vitesse_m_s = 1.8\n                # CORRECTION : avant, -5 * delta faisait braquer vers le mur le plus proche\n                angle_degre = 0.5*(delta)\n                if donnees_lidar_brutes_moy[18]<100 :\n                    angle_degre -= 8\n                if donnees_lidar_brutes_moy[54]<100 :\n                    angle_degre += 8\n        elif donnees_lidar_brutes_moy[0]<250 :\n                if donnees_lidar_brutes_moy[7]>donnees_lidar_brutes_moy[65] :\n                      vitesse_m_s = -5\n                      angle_degre = -21\n                      print(\"recul1\")\n                      \n                elif donnees_lidar_brutes_moy[65]>donnees_lidar_brutes_moy[7] :\n                      vitesse_m_s = -5\n                      angle_degre = 21\n                      print(\"recul2\")\n                else :                       # CORRECTION : cas d'\u00e9galit\u00e9 oubli\u00e9\n                      vitesse_m_s = -5\n                      angle_degre = 0\n                en_recul=1\n                     \n        elif donnees_lidar_brutes_moy[0]<500 :\n                vitesse_m_s = 0.5\n                angle_degre = 21*(delta)\n        else :\n            vitesse_m_s = 0.8\n            if donnees_lidar_brutes_moy[18]<200 or donnees_lidar_brutes_moy[54]<200:\n                angle_degre = 21 * (delta)\n            else:\n                angle_degre =15*(delta)\n\n        # CORRECTION : voiture coinc\u00e9e (vitesse nulle pendant 0,5 s alors qu'elle veut avancer)\n        # -> 0,8 s de marche arri\u00e8re en braquant \u00e0 l'oppos\u00e9 de l'espace libre\n        if en_recul == 0 and abs(driver.getCurrentSpeed()) < 0.2:\n            pas_bloque += 1\n        else:\n            pas_bloque = 0\n        if pas_bloque > int(0.5 * 1000 / basicTimeStep):\n            recul_restant = DUREE_RECUL\n            angle_recul = -16 if delta >= 0 else 16\n            pas_bloque = 0\n        if recul_restant > 0:\n            recul_restant -= 1\n            vitesse_m_s = -3.6        # en km/h, envoy\u00e9 directement \u00e0 setCruisingSpeed comme pour recul1 / recul2\n            angle_degre = angle_recul\n            en_recul = 1\n\n        # CORRECTION : en marche avant, on ne braque jamais vers un mur trop proche (\u00e0 45\u00b0 ou sur le c\u00f4t\u00e9),\n        # sinon la voiture coupe les virages et accroche le coin int\u00e9rieur\n        if en_recul == 0:\n            angle_degre = max(-maxangle_degre, min(maxangle_degre, angle_degre))\n            gauche_proche = donnees_lidar_brutes_moy[18] < 100 or donnees_lidar_brutes_moy[9] < 200\n            droite_proche = donnees_lidar_brutes_moy[54] < 100 or donnees_lidar_brutes_moy[63] < 200\n            if gauche_proche and not droite_proche:\n                angle_degre = min(angle_degre, -8)\n            if droite_proche and not gauche_proche:\n                angle_degre = max(angle_degre, 8)\n            \n        set_direction_degre(angle_degre)\n        if en_recul == 0:\n            set_vitesse_m_s(vitesse_m_s)\n        else :\n            driver.setCruisingSpeed(vitesse_m_s)\n \n    #########################################################\n";
 const SRC_JS = {
   base: () => [AlgoBase, tableauMm],
@@ -3812,6 +4031,125 @@ const EXEMPLES = [
   })(),
 ];
 
+
+// ---------- générateur de pistes aléatoires
+// On fait « pousser » une forme au hasard, case par case, sur une grille de cases de 2 à 4 m,
+// puis la piste suit son contour : il est toujours fermé, ne se croise jamais,
+// et deux allées voisines restent séparées par au moins 1 m de mur.
+function aleaGraine(graine) {           // PRNG mulberry32
+  let a = graine >>> 0;
+  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+// contour d'une région de cases (grille grossière) : liste de sommets si c'est une seule boucle simple, sinon null
+function contourRegion(region) {
+  const k = (x, y) => x + "," + y, aretes = new Map();   // sommet -> liste de sommets voisins sur le contour
+  const ajout = (a, b) => { (aretes.get(a) || aretes.set(a, []).get(a)).push(b); };
+  for (const c of region) {
+    const [x, y] = c.split(",").map(Number);
+    const bords = [[[x, y], [x + 1, y], k(x, y - 1)], [[x + 1, y], [x + 1, y + 1], k(x + 1, y)], [[x + 1, y + 1], [x, y + 1], k(x, y + 1)], [[x, y + 1], [x, y], k(x - 1, y)]];
+    for (const [p, q, voisin] of bords) if (!region.has(voisin)) { ajout(k(...p), k(...q)); }   // sens trigo autour de la région
+  }
+  for (const [, l] of aretes) if (l.length !== 1) return null;     // sommet touché deux fois (pincement)
+  const depart = aretes.keys().next().value, boucle = [depart];
+  let s = aretes.get(depart)[0];
+  while (s !== depart) { boucle.push(s); if (boucle.length > aretes.size) return null; s = aretes.get(s)[0]; }
+  if (boucle.length !== aretes.size) return null;                   // plusieurs boucles : trou dans la région
+  return boucle.map(p => p.split(",").map(Number));
+}
+// tracé "E4 N2 ..." d'une piste aléatoire d'environ `longueur` m ; pas = taille d'une case grossière en m (2 = sinueux, 4 = larges courbes)
+function traceAleatoire(graine, longueur, pas, tailleMax = 30) {
+  const r = aleaGraine(graine), k = (x, y) => x + "," + y;
+  for (let essai = 0; essai < 60; essai++) {
+    const region = new Set([k(0, 0)]);
+    let perim = 4, coince = 0, bornes = [0, 0, 0, 0];
+    const lim = Math.floor(tailleMax / pas);
+    while (perim * pas < longueur && coince < 400) {
+      // case voisine au hasard, en préférant celles qui allongent le contour (une seule voisine)
+      const liste = [...region], c = liste[Math.floor(r() * liste.length)].split(",").map(Number);
+      const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(r() * 4)], n = [c[0] + d[0], c[1] + d[1]], kn = k(...n);
+      if (region.has(kn)) { coince++; continue; }
+      const nx = Math.min(bornes[0], n[0]), Nx = Math.max(bornes[1], n[0]), ny = Math.min(bornes[2], n[1]), Ny = Math.max(bornes[3], n[1]);
+      if (Nx - nx + 1 > lim || Ny - ny + 1 > lim) { coince++; continue; }
+      const voisins = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => region.has(k(n[0] + a, n[1] + b))).length;
+      if (voisins > 1 && r() < 0.85) { coince++; continue; }
+      region.add(kn);
+      if (!contourRegion(region)) { region.delete(kn); coince++; continue; }
+      perim += 4 - 2 * voisins; bornes = [nx, Nx, ny, Ny]; coince = 0;
+    }
+    if (perim * pas < longueur * 0.8) continue;
+    const pts = contourRegion(region);
+    // segments (direction, longueur en cases grossières)
+    const segs = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const dir = b[0] > a[0] ? "E" : b[0] < a[0] ? "W" : b[1] > a[1] ? "N" : "S";
+      if (segs.length && segs[segs.length - 1][0] === dir) segs[segs.length - 1][1]++; else segs.push([dir, 1]);
+    }
+    if (segs.length > 1 && segs[0][0] === segs[segs.length - 1][0]) { segs[0][1] += segs.pop()[1]; }
+    // départ au début du plus long segment
+    let iMax = 0; segs.forEach((s, i) => { if (s[1] > segs[iMax][1]) iMax = i; });
+    const tour = segs.slice(iMax).concat(segs.slice(0, iMax));
+    return tour.map(([d, n]) => d + n * pas).join(" ");
+  }
+  return null;
+}
+const NIVEAUX_ALEA = {
+  "Facile":    { pas: 4, densite: 0,      murs: 0 },
+  "Moyen":     { pas: 3, densite: 1 / 14, murs: 0 },
+  "Difficile": { pas: 2, densite: 1 / 10, murs: 0.5 },
+  "Extrême":   { pas: 2, densite: 1 / 6,  murs: 0.8 },
+};
+function obstaclesAleatoires(trace, reglage, r) {
+  if (!reglage.densite) return [];
+  const dirs = [];
+  for (const tok of trace.split(" ")) for (let k = 0; k < +tok.slice(1); k++) dirs.push(tok[0]);
+  const n = dirs.length, droites = [];
+  for (let i = 4; i < n - 2; i++) if (dirs[i - 1] === dirs[i] && dirs[i] === dirs[(i + 1) % n]) droites.push(i);
+  for (let i = droites.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [droites[i], droites[j]] = [droites[j], droites[i]]; }
+  const choisis = [], voulu = Math.round(n * reglage.densite);
+  for (const i of droites) {
+    if (choisis.length >= voulu) break;
+    if (choisis.some(([j]) => Math.min(Math.abs(i - j), n - Math.abs(i - j)) < 3)) continue;
+    choisis.push(r() < reglage.murs ? [i, r() < 0.5 ? 1 : -1, "m"] : [i, r() < 0.5 ? 1 : -1]);
+  }
+  return choisis;
+}
+function pisteAleatoire(longueur, niveau, graine) {
+  const reglage = NIVEAUX_ALEA[niveau] || NIVEAUX_ALEA.Moyen;
+  const trace = traceAleatoire(graine, longueur, reglage.pas);
+  if (!trace) return null;
+  const obs = obstaclesAleatoires(trace, reglage, aleaGraine(graine * 31 + 7));
+  const p = pisteDepuisTrace(trace, obs), virages = trace.split(" ").length;
+  const nMurs = obs.filter(o => o[2] === "m").length, nPlots = obs.length - nMurs;
+  const detail = [`${virages} virages`, nPlots ? `${nPlots} plot${nPlots > 1 ? "s" : ""}` : "", nMurs ? `${nMurs} mur${nMurs > 1 ? "s" : ""}` : ""].filter(Boolean);
+  return { id: "alea-" + graine, nom: `Aléatoire n°${graine}`, niveau,
+    texte: `Environ ${p.longueur} m, ${detail.join(", ").replace(/, ([^,]*)$/, " et $1")}. Tirée au hasard : si elle te plaît, enregistre-la plus bas.`, ...p };
+}
+const GEN = { longueur: 60, niveau: "Moyen", modele: null };
+function genererPiste() {
+  let m = null;
+  for (let k = 0; k < 5 && !m; k++) m = pisteAleatoire(GEN.longueur, GEN.niveau, 1 + Math.floor(Math.random() * 99999));
+  if (!m) return;
+  GEN.modele = m;
+  afficherApercuAleatoire();
+  const champ = document.getElementById("nomPiste"); if (champ && !champ.value) champ.placeholder = "Nom de la piste actuelle (ex. " + m.nom + ")";
+}
+function afficherApercuAleatoire() {
+  const z = document.getElementById("genApercu");
+  if (!GEN.modele) { genererPiste(); return; }
+  z.innerHTML = ""; const f = fichePiste(GEN.modele); f.classList.add("nouvelle"); z.appendChild(f);
+}
+for (const [id, cle] of [["genLongueur", "longueur"], ["genNiveau", "niveau"]]) {
+  const g = document.getElementById(id);
+  g.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    g.querySelectorAll("button").forEach(x => x.classList.toggle("actif", x === b));
+    GEN[cle] = cle === "longueur" ? +b.dataset.v : b.dataset.v;
+    genererPiste();
+  });
+}
+document.getElementById("btGenerer").addEventListener("click", genererPiste);
+
 const copie = (o) => JSON.parse(JSON.stringify(o));
 function dessinerApercu(cvs, modele) {
   const w = 580, h = 380;
@@ -3892,6 +4230,7 @@ function ecrirePistesPerso(l) {
   try { localStorage.setItem("covapsy_pistes_perso", JSON.stringify(l)); return true; } catch (e) { return false; }
 }
 function afficherPistes() {
+  afficherApercuAleatoire();
   const g = document.getElementById("grilleExemples");
   g.innerHTML = "";
   EXEMPLES.forEach(m => g.appendChild(fichePiste(m)));
@@ -4124,7 +4463,7 @@ async function nomPersonne(id) {
 }
 function erreurEcriture(e) {
   if (PARTAGE.mode === "firebase" && e && e.code === "permission-denied") { PARTAGE.lectureSeule = true; PARTAGE.refuse = true; majPastilleFirebase(); journal(MSG_NON_AUTORISE); return; }
-  if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { PARTAGE.lectureSeule = true; statutPartage("lecture", "Partagé, lecture seule", MSG_LECTURE_SEULE); journal(MSG_LECTURE_SEULE); }
+  if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { PARTAGE.lectureSeule = true; statutPartage("lecture", "Lecture seule", MSG_LECTURE_SEULE); journal(MSG_LECTURE_SEULE); }
   else if (e && e.code === "quota_exceeded") journal("La base partagée est pleine : supprime des pistes ou des algorithmes inutiles.");
   else journal("Enregistrement partagé impossible pour l'instant, nouvel essai à la prochaine modification.");
 }
@@ -4263,18 +4602,18 @@ const MSG_CONNEXION = "Pour modifier, connecte-toi avec Google en cliquant sur l
 const MSG_NON_AUTORISE = "Ton compte Google n'est pas dans la liste des personnes autorisées : demande à Emeric de t'ajouter.";
 function majPastilleFirebase() {
   if (PARTAGE.mode !== "firebase") return;
-  if (!PARTAGE.compte) statutPartage("lecture", "Se connecter pour modifier", MSG_CONNEXION);
-  else if (PARTAGE.refuse) statutPartage("lecture", "Lecture seule, " + PARTAGE.uid, MSG_NON_AUTORISE + " Clique pour te déconnecter.");
-  else statutPartage("enLigne", "Partagé, " + PARTAGE.uid, "Connecté avec " + (PARTAGE.compte.email || "Google") + ". Tes algorithmes et tes pistes sont partagés en direct. Clique pour te déconnecter.");
+  if (!PARTAGE.compte) statutPartage("lecture", "Se connecter", MSG_CONNEXION);
+  else if (PARTAGE.refuse) statutPartage("lecture", "Lecture seule", MSG_NON_AUTORISE + " Clique pour te déconnecter.");
+  else statutPartage("enLigne", PARTAGE.uid.split(" ")[0], "Connecté avec " + (PARTAGE.compte.email || "Google") + ". Tes algorithmes et tes pistes sont partagés en direct. Clique pour te déconnecter.");
 }
 async function initFirebase() {
   let F;
-  statutPartage("", "Connexion au partage…", "Connexion à la base partagée");
+  statutPartage("", "Connexion…", "Connexion à la base partagée");
   try {
     const [A, S, U] = await Promise.all([import(FIREBASE_SDK + "firebase-app.js"), import(FIREBASE_SDK + "firebase-firestore.js"), import(FIREBASE_SDK + "firebase-auth.js")]);
     F = { ...A, ...S, ...U };
   } catch (e) {
-    statutPartage("horsLigne", "Partage injoignable", "Impossible de charger Firebase (pas d'internet ?). Tes enregistrements restent dans ce navigateur.");
+    statutPartage("horsLigne", "Hors ligne", "Impossible de charger Firebase (pas d'internet ?). Tes enregistrements restent dans ce navigateur.");
     return;
   }
   const app = F.initializeApp(FIREBASE_CONFIG), fs = F.getFirestore(app), auth = F.getAuth(app);
@@ -4300,9 +4639,9 @@ async function initFirebase() {
     majPastilleFirebase();
     if (u) { journal(`Connecté : ${PARTAGE.uid}`); partageAlgos(); }
   });
-  const attente = setTimeout(() => statutPartage("horsLigne", "Partage injoignable", "La base partagée ne répond pas : ce que tu vois peut ne pas être à jour."), 10000);
+  const attente = setTimeout(() => statutPartage("horsLigne", "Hors ligne", "La base partagée ne répond pas : ce que tu vois peut ne pas être à jour."), 10000);
   const pret = (snap) => { if (snap.metadata && snap.metadata.fromCache) return; clearTimeout(attente); majPastilleFirebase(); };
-  const perdu = (e) => { clearTimeout(attente); statutPartage("horsLigne", "Partage coupé", "La connexion au partage s'est arrêtée (" + ((e && e.code) || "erreur") + "). Recharge la page."); };
+  const perdu = (e) => { clearTimeout(attente); statutPartage("horsLigne", "Hors ligne", "La connexion au partage s'est arrêtée (" + ((e && e.code) || "erreur") + "). Recharge la page."); };
   db.collection("algos").onSnapshot((snap) => { recevoirAlgos(snap); pret(snap); }, perdu);
   db.collection("pistes").onSnapshot((snap) => { recevoirPistes(snap); pret(snap); }, perdu);
   if (!document.getElementById("pagePistes").hidden) afficherPistes();
@@ -4323,15 +4662,15 @@ async function initPartage() {
   try { PARTAGE.uid = user ? await user.id() : null; } catch (e) { PARTAGE.uid = null; }
   try { if (user && (await user.can("data.write")) === false) PARTAGE.lectureSeule = true; } catch (e) { /* on verra à la première écriture */ }
   PARTAGE.actif = true;
-  statutPartage("", "Connexion au partage…", "Récupération des algorithmes et des pistes partagés");
-  const attente = setTimeout(() => statutPartage("horsLigne", "Partage injoignable", "Les données partagées ne répondent pas : ce que tu vois peut ne pas être à jour."), 10000);
+  statutPartage("", "Connexion…", "Récupération des algorithmes et des pistes partagés");
+  const attente = setTimeout(() => statutPartage("horsLigne", "Hors ligne", "Les données partagées ne répondent pas : ce que tu vois peut ne pas être à jour."), 10000);
   const pret = (snap) => {
     if (snap.metadata && snap.metadata.fromCache) return;
     clearTimeout(attente);
-    if (PARTAGE.lectureSeule) statutPartage("lecture", "Partagé, lecture seule", MSG_LECTURE_SEULE);
+    if (PARTAGE.lectureSeule) statutPartage("lecture", "Lecture seule", MSG_LECTURE_SEULE);
     else statutPartage("enLigne", "Partagé", "Tes algorithmes et tes pistes enregistrées sont partagés en direct avec tous ceux qui ouvrent cette page.");
   };
-  const perdu = (e) => { clearTimeout(attente); statutPartage("horsLigne", "Partage coupé", "La connexion au partage s'est arrêtée. Recharge la page pour la retrouver."); };
+  const perdu = (e) => { clearTimeout(attente); statutPartage("horsLigne", "Hors ligne", "La connexion au partage s'est arrêtée. Recharge la page pour la retrouver."); };
   db.collection("algos").onSnapshot((snap) => { recevoirAlgos(snap); pret(snap); }, perdu);
   db.collection("pistes").onSnapshot((snap) => { recevoirPistes(snap); pret(snap); }, perdu);
   if (!document.getElementById("pagePistes").hidden) afficherPistes();
@@ -4434,6 +4773,7 @@ document.addEventListener("keydown", (e) => {
   if (modeEdition && (e.key === "r" || e.key === "R")) tourner();
   if (e.key === " ") { e.preventDefault(); enMarche || feuxEnCours ? arreter() : demarrer(); }
   if (!modeEdition && (e.key === "c" || e.key === "C")) choisirCamera(camera.mode === "suivre" ? "ensemble" : "suivre");
+  if (!modeEdition && e.key === "3") choisirCamera(camera.mode === "3d" ? "suivre" : "3d");
   if (!modeEdition && (e.key === "v" || e.key === "V")) choisirCamera("ensemble");
   if (!modeEdition && (e.key === "+" || e.key === "=")) zoomer(1.25);
   if (!modeEdition && (e.key === "-" || e.key === "_")) zoomer(0.8);
@@ -4483,6 +4823,204 @@ function majHud() {
   const b = (v.braq || 0) / TT02.braqMax, j = document.getElementById("hudVolant");
   j.style.left = (50 + Math.min(0, -b) * 50) + "%"; j.style.width = Math.abs(b) * 50 + "%";
 }
+// =====================================================================
+//  Vue 3D embarquée (WebGL, sans bibliothèque) : caméra derrière la voiture choisie, ou cockpit
+// =====================================================================
+const V3D = { gl: null, prog: null, cv: null, statBuf: null, nStat: 0, dynBuf: null, cle: "", eye: null, cible: null, cap: null, dist: 1.0, erreur: false };
+const HEX = (h, a = 1) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255, a];
+function initGL() {
+  if (V3D.gl || V3D.erreur) return V3D.gl;
+  const c = document.createElement("canvas");
+  c.id = "cv3d"; c.hidden = true; c.setAttribute("aria-label", "Vue 3D de la voiture choisie");
+  zone.insertBefore(c, cv.nextSibling);
+  const gl = c.getContext("webgl", { antialias: true, alpha: false }) || c.getContext("experimental-webgl");
+  if (!gl) { V3D.erreur = true; c.remove(); return null; }
+  const vs = `attribute vec3 p; attribute vec3 n; attribute vec4 c; uniform mat4 m; uniform vec3 oeil; uniform float pt;
+    varying vec4 vc; varying float vd; varying float vl;
+    void main(){ gl_Position = m * vec4(p, 1.0); gl_PointSize = pt; vc = c; vd = distance(p, oeil);
+      vec3 L = normalize(vec3(0.35, 0.25, 0.9)); vl = n == vec3(0.0) ? 1.0 : 0.58 + 0.42 * max(dot(normalize(n), L), 0.0); }`;
+  const fs = `precision mediump float; varying vec4 vc; varying float vd; varying float vl; uniform vec3 brume; uniform vec2 brumeD;
+    void main(){ float f = clamp((vd - brumeD.x) / (brumeD.y - brumeD.x), 0.0, 1.0);
+      gl_FragColor = vec4(mix(vc.rgb * vl, brume, f * 0.85), vc.a); }`;
+  const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const pr = gl.createProgram();
+  try { gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(pr); }
+  catch (e) { console.error(e); V3D.erreur = true; c.remove(); return null; }
+  V3D.gl = gl; V3D.prog = pr; V3D.cv = c;
+  V3D.loc = { p: gl.getAttribLocation(pr, "p"), n: gl.getAttribLocation(pr, "n"), c: gl.getAttribLocation(pr, "c"),
+              m: gl.getUniformLocation(pr, "m"), oeil: gl.getUniformLocation(pr, "oeil"), pt: gl.getUniformLocation(pr, "pt"),
+              brume: gl.getUniformLocation(pr, "brume"), brumeD: gl.getUniformLocation(pr, "brumeD") };
+  V3D.statBuf = gl.createBuffer(); V3D.dynBuf = gl.createBuffer(); V3D.ligBuf = gl.createBuffer();
+  c.addEventListener("wheel", (e) => { e.preventDefault(); V3D.dist = clamp(V3D.dist * (e.deltaY > 0 ? 1.12 : 1 / 1.12), 0.25, 4); }, { passive: false });
+  c.addEventListener("dblclick", () => { V3D.dist = V3D.dist > 0.3 ? 0.25 : 1.0; });
+  return gl;
+}
+// ---- construction des maillages : 10 nombres par sommet (position, normale, couleur rgba)
+function tri(out, a, b, c, n, col) { for (const q of [a, b, c]) out.push(q[0], q[1], q[2], n[0], n[1], n[2], col[0], col[1], col[2], col[3]); }
+function quad(out, a, b, c, d, col) {
+  const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+  const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  tri(out, a, b, c, n, col); tri(out, a, c, d, n, col);
+}
+// prisme vertical sur un quadrilatère au sol (sommets dans le sens trigo), de z0 à z1, sans dessous
+function prisme(out, P, z0, z1, col, colHaut = col) {
+  const k = (P[1][0] - P[0][0]) * (P[2][1] - P[0][1]) - (P[1][1] - P[0][1]) * (P[2][0] - P[0][0]);
+  if (k < 0) P = P.slice().reverse();
+  quad(out, [P[0][0], P[0][1], z1], [P[1][0], P[1][1], z1], [P[2][0], P[2][1], z1], [P[3][0], P[3][1], z1], colHaut);
+  for (let i = 0; i < 4; i++) { const a = P[i], b = P[(i + 1) % 4]; quad(out, [a[0], a[1], z0], [b[0], b[1], z0], [b[0], b[1], z1], [a[0], a[1], z1], col); }
+}
+function rectSol(out, x0, y0, x1, y1, z, col) { quad(out, [x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z], col); }
+function construireScene3D() {
+  const out = [], s = piste.sol;
+  // parquet autour du tapis, en lames
+  const [bx0, bx1, by0, by1] = bornes(), m = 8;
+  const bois = [HEX("#c9b48e"), HEX("#bfa983"), HEX("#d1bd98")];
+  const tx0 = s.cx - s.w / 2, tx1 = s.cx + s.w / 2, ty0 = s.cy - s.h / 2, ty1 = s.cy + s.h / 2;
+  for (let y = Math.floor(by0 - m), k = 0; y < by1 + m; y += 0.5, k++)
+    for (let x = Math.floor(bx0 - m) - (k % 2) * 0.6; x < bx1 + m; x += 1.2) {
+      // lame découpée autour du tapis (pas de surfaces superposées : pas de scintillement)
+      const col = bois[(Math.abs(Math.round(x * 7 + y * 3))) % 3], y1 = y + 0.5, x1 = x + 1.2;
+      if (x1 <= tx0 || x >= tx1 || y1 <= ty0 || y >= ty1) { rectSol(out, x, y, x1, y1, 0, col); continue; }
+      if (x < tx0) rectSol(out, x, y, tx0, y1, 0, col);
+      if (x1 > tx1) rectSol(out, tx1, y, x1, y1, 0, col);
+      const xa = Math.max(x, tx0), xb = Math.min(x1, tx1);
+      if (y < ty0) rectSol(out, xa, y, xb, ty0, 0, col);
+      if (y1 > ty1) rectSol(out, xa, ty1, xb, y1, 0, col);
+    }
+  // tapis de piste en dalles d'1 m (deux gris très proches : on sent la vitesse)
+  const x0 = s.cx - s.w / 2, y0 = s.cy - s.h / 2;
+  for (let i = 0; i < Math.ceil(s.w); i++) for (let j = 0; j < Math.ceil(s.h); j++) {
+    const xa = x0 + i, ya = y0 + j, xb = Math.min(x0 + s.w, xa + 1), yb = Math.min(y0 + s.h, ya + 1);
+    rectSol(out, xa, ya, xb, yb, 0, (i + j) % 2 ? HEX("#2b302e") : HEX("#323836"));
+  }
+  // bordures, murs et plots
+  for (const p of piste.pieces) {
+    const col = HEX(couleurPiece(p)), haut = p.t === "b" ? 0.25 : p.c === "o" ? 0.2 : 0.14;
+    const colHaut = col.map((v, i) => i < 3 ? Math.min(1, v * 1.15 + 0.05) : v);
+    if (p.t === "v") { const { ext, int } = arcsVirage(p); for (let i = 0; i < NARC; i++) prisme(out, [ext[i], ext[i + 1], int[i + 1], int[i]], 0, haut, col, colHaut); }
+    else prisme(out, polyDroit(p), 0, haut, col, colHaut);
+  }
+  // ligne de départ en damier
+  const dep = piste.voitures[0] ? { x: piste.voitures[0].x, y: piste.voitures[0].y, a: piste.voitures[0].a } : null;
+  if (dep) {
+    const c = Math.cos(dep.a), sn = Math.sin(dep.a), n = 10, l = 0.45, pas = 2 * l / n;
+    const P = (a, b) => [dep.x + c * a - sn * b, dep.y + sn * a + c * b, 0.003];
+    for (let i = 0; i < n; i++) for (let r = 0; r < 2; r++) {
+      const lat = -l + i * pas, lon = (r - 1) * pas;
+      quad(out, P(lon, lat), P(lon + pas, lat), P(lon + pas, lat + pas), P(lon, lat + pas), (i + r) % 2 ? HEX("#1c2420") : HEX("#f4f5f1"));
+    }
+  }
+  return new Float32Array(out);
+}
+function boiteVoiture(out, v, x0, x1, y0, y1, z0, z1, col, colHaut) {
+  const c = Math.cos(v.th), s = Math.sin(v.th), P = (a, b) => [v.x + c * a - s * b, v.y + s * a + c * b];
+  prisme(out, [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)], z0, z1, col, colHaut || col);
+}
+function roue(out, v, ax, ay, braq) {
+  const c = Math.cos(v.th), s = Math.sin(v.th), cx = v.x + c * ax - s * ay, cy = v.y + s * ax + c * ay;
+  const a = v.th + braq, ca = Math.cos(a), sa = Math.sin(a), P = (u, w) => [cx + ca * u - sa * w, cy + sa * u + ca * w];
+  prisme(out, [P(-0.04, -0.017), P(0.04, -0.017), P(0.04, 0.017), P(-0.04, 0.017)], 0, 0.07, HEX("#141716"), HEX("#2a2e2c"));
+}
+function construireVoitures3D() {
+  const out = [];
+  for (const v of voitures) {
+    // ombre douce
+    const c = Math.cos(v.th), s = Math.sin(v.th), P = (a, b) => [v.x + c * a - s * b, v.y + s * a + c * b, 0.004];
+    quad(out, P(-0.13, -0.13), P(0.4, -0.13), P(0.4, 0.13), P(-0.13, 0.13), [0, 0, 0, 0.35]);
+    const col = HEX(v.couleur), fonce = col.map((x, i) => i < 3 ? x * 0.55 : x), clair = col.map((x, i) => i < 3 ? Math.min(1, x * 1.2 + 0.08) : x);
+    boiteVoiture(out, v, -TT02.arriere, TT02.avant, -0.085, 0.085, 0.035, 0.085, col, clair);          // châssis
+    boiteVoiture(out, v, -0.02, 0.2, -0.065, 0.065, 0.085, 0.13, fonce, col);                          // carrosserie
+    boiteVoiture(out, v, -TT02.arriere, -0.04, -0.09, 0.09, 0.12, 0.135, fonce);                       // aileron
+    boiteVoiture(out, v, LIDAR.avant - 0.03, LIDAR.avant + 0.03, -0.03, 0.03, 0.13, 0.165, HEX("#1d2221"), HEX("#3a4240"));   // lidar
+    for (const [ax, ay, b] of [[0, 0.095, 0], [0, -0.095, 0], [TT02.L, 0.095, v.braq || 0], [TT02.L, -0.095, v.braq || 0]]) roue(out, v, ax, ay, b);
+  }
+  return new Float32Array(out);
+}
+function construireLidar3D(v) {
+  const out = [], [lx, ly, th] = v.posScan, col = HEX(v.couleur), z = 0.15;
+  for (let k = 0; k < 360; k += 2) {
+    const d = v.lidar[k]; if (!isFinite(d)) continue;
+    const a = th - k * PAS_LIDAR, hx = lx + d * Math.cos(a), hy = ly + d * Math.sin(a);
+    out.push(lx, ly, z, 0, 0, 0, col[0], col[1], col[2], 0.16, hx, hy, z, 0, 0, 0, col[0], col[1], col[2], 0.5);
+  }
+  return new Float32Array(out);
+}
+// ---- matrices (colonnes d'abord)
+function perspective(fov, asp, n, f) { const t = 1 / Math.tan(fov / 2); return [t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; }
+function regarder(e, c, up) {
+  const z = norm3([e[0] - c[0], e[1] - c[1], e[2] - c[2]]), x = norm3(croix(up, z)), y = croix(z, x);
+  return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot3(x, e), -dot3(y, e), -dot3(z, e), 1];
+}
+const croix = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm3 = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+function mult4(a, b) { const r = new Array(16).fill(0); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) for (let k = 0; k < 4; k++) r[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k]; return r; }
+function tracer3D(buf, data, mode, n) {
+  const gl = V3D.gl, L = V3D.loc;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  if (data) gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(L.p, 3, gl.FLOAT, false, 40, 0); gl.enableVertexAttribArray(L.p);
+  gl.vertexAttribPointer(L.n, 3, gl.FLOAT, false, 40, 12); gl.enableVertexAttribArray(L.n);
+  gl.vertexAttribPointer(L.c, 4, gl.FLOAT, false, 40, 24); gl.enableVertexAttribArray(L.c);
+  gl.drawArrays(mode, 0, n);
+}
+function dessiner3D() {
+  const gl = initGL();
+  if (!gl) { choisirCamera("suivre"); journal("La vue 3D n'est pas disponible dans ce navigateur (WebGL désactivé)."); return; }
+  const c = V3D.cv, d = window.devicePixelRatio || 1, w = cv.clientWidth || W, h = cv.clientHeight || H;
+  if (c.width !== Math.round(w * d) || c.height !== Math.round(h * d)) { c.width = Math.round(w * d); c.height = Math.round(h * d); c.style.width = w + "px"; c.style.height = h + "px"; }
+  // scène fixe : reconstruite quand la piste change
+  const pv = piste.voitures[0] || {}, cle = piste.nom + "|" + piste.pieces.length + "|" + segs.length + "|" + (piste.pieces[0] ? piste.pieces[0].x + "," + piste.pieces[0].y : "") + "|" + pv.x + "," + pv.y;
+  if (cle !== V3D.cle) { const s = construireScene3D(); gl.bindBuffer(gl.ARRAY_BUFFER, V3D.statBuf); gl.bufferData(gl.ARRAY_BUFFER, s, gl.STATIC_DRAW); V3D.nStat = s.length / 10; V3D.cle = cle; }
+  const v = voitures[selection] || voitures[0];
+  if (!v) return;
+  // caméra : derrière la voiture (distance réglable à la molette), ou cockpit au niveau du lidar
+  const cockpit = V3D.dist <= 0.3;
+  if (V3D.cap === null || Math.abs(mod(v.th - V3D.cap + Math.PI, 2 * Math.PI) - Math.PI) > 2) V3D.cap = v.th;
+  V3D.cap += (mod(v.th - V3D.cap + Math.PI, 2 * Math.PI) - Math.PI) * (cockpit ? 1 : 0.12);
+  const ux = Math.cos(V3D.cap), uy = Math.sin(V3D.cap);
+  let eye, cible;
+  if (cockpit) {
+    const lx = v.x + Math.cos(v.th) * (LIDAR.avant + 0.04), ly = v.y + Math.sin(v.th) * (LIDAR.avant + 0.04);
+    eye = [lx, ly, 0.19]; cible = [lx + Math.cos(v.th) * 3, ly + Math.sin(v.th) * 3, 0.06];
+  } else {
+    const D = V3D.dist;
+    eye = [v.x - ux * D, v.y - uy * D, 0.18 + 0.32 * D]; cible = [v.x + ux * (0.8 + 0.4 * D), v.y + uy * (0.8 + 0.4 * D), 0.05];
+    if (V3D.eye && !V3D.saut) for (let i = 0; i < 3; i++) eye[i] = V3D.eye[i] + (eye[i] - V3D.eye[i]) * 0.35;
+  }
+  V3D.eye = eye; V3D.saut = false;
+  const m = mult4(perspective((cockpit ? 70 : 58) * D2R, c.width / c.height, 0.03, 70), regarder(eye, cible, [0, 0, 1]));
+  const clair = document.documentElement.dataset.theme === "clair", brume = clair ? [0.86, 0.88, 0.89] : [0.11, 0.13, 0.14];
+  gl.viewport(0, 0, c.width, c.height);
+  gl.clearColor(brume[0], brume[1], brume[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.useProgram(V3D.prog);
+  gl.uniformMatrix4fv(V3D.loc.m, false, new Float32Array(m));
+  gl.uniform3fv(V3D.loc.oeil, eye); gl.uniform3fv(V3D.loc.brume, brume); gl.uniform2f(V3D.loc.brumeD, 7, 32); gl.uniform1f(V3D.loc.pt, 4 * d);
+  tracer3D(V3D.statBuf, null, gl.TRIANGLES, V3D.nStat);
+  const dyn = construireVoitures3D();
+  tracer3D(V3D.dynBuf, dyn, gl.TRIANGLES, dyn.length / 10);
+  // trajectoire calculée par la violette, tracée au sol
+  if (document.getElementById("voirTraj").checked) {
+    const t = [];
+    for (const w of voitures) if (w.trajPrevue && w.trajPrevue.length > 1) {
+      const col = HEX(w.couleur), P = w.trajPrevue;
+      for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; t.push(a[0], a[1], 0.006, 0, 0, 0, col[0], col[1], col[2], 0.9, b[0], b[1], 0.006, 0, 0, 0, col[0], col[1], col[2], 0.9); }
+    }
+    if (t.length) tracer3D(V3D.ligBuf, new Float32Array(t), gl.LINES, t.length / 10);
+  }
+  if (document.getElementById("voirLidar").checked) {
+    gl.depthMask(false);
+    const li = construireLidar3D(v);
+    tracer3D(V3D.ligBuf, li, gl.LINES, li.length / 10);
+    // impacts : un point à l'extrémité de chaque rayon
+    const pts = new Float32Array(li.length / 2);
+    for (let i = 0, j = 0; i < li.length; i += 20, j += 10) { pts.set(li.subarray(i + 10, i + 20), j); pts[j + 9] = 1; }
+    tracer3D(V3D.ligBuf, pts, gl.POINTS, pts.length / 10);
+    gl.depthMask(true);
+  }
+}
+
 function boucle(now) {
   requestAnimationFrame(boucle);      // en premier : l'animation continue même si une étape plante
   const dtReel = Math.min(0.1, (now - dernier) / 1000);
@@ -4495,7 +5033,9 @@ function boucle(now) {
       if (performance.now() - debut > 30) { reserve = 0; break; }  // le navigateur n'arrive pas à suivre
     }
   }
-  try { majCamera(false); dessiner(); } catch (e) { console.error(e); }
+  const en3d = camera.mode === "3d" && !modeEdition;
+  cv.hidden = en3d; if (V3D.cv) V3D.cv.hidden = !en3d;
+  try { majCamera(false); if (en3d) dessiner3D(); else dessiner(); } catch (e) { console.error(e); }
   try { majHud(); } catch (e) { console.error(e); }
   if (now - dernierPanneau > 200) {
     majPanneau(); dernierPanneau = now;
