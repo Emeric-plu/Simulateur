@@ -4107,7 +4107,7 @@ function afficherClassement() {
 //  Le fichier HTML ouvert seul continue d'enregistrer dans le navigateur, comme avant.
 // =====================================================================
 const MSG_LECTURE_SEULE = "Tu peux voir ce qui est partagé, mais pas le modifier : demande au propriétaire de la page de te donner le rôle Éditeur.";
-const PARTAGE = { actif: false, db: null, user: null, uid: null, lectureSeule: false, pistes: [],
+const PARTAGE = { mode: "claude", actif: false, db: null, user: null, uid: null, lectureSeule: false, pistes: [],
                   connusA: new Map(), minuteurs: new Map(), enCours: new Set(), premierA: false, premierP: false };
 const cleAlgo = (a) => JSON.stringify([a.nom || "", a.code || "", a.lang || "js"]);
 function statutPartage(etat, texte, titre) {
@@ -4116,12 +4116,13 @@ function statutPartage(etat, texte, titre) {
   el.querySelector("span").textContent = texte; el.title = titre || "";
 }
 async function nomPersonne(id) {
+  if (PARTAGE.mode === "firebase") return !id ? "" : id === PARTAGE.uid ? "toi" : id;
   if (!PARTAGE.user || !id) return "";
   if (id === PARTAGE.uid) return "toi";
   try { const ps = await PARTAGE.user.profiles([id]); return (ps && ps[id] && ps[id].name) || "un ami"; } catch (e) { return "un ami"; }
 }
 function erreurEcriture(e) {
-  if (e && e.code === "invalid_argument") { PARTAGE.lectureSeule = true; statutPartage("lecture", "Partagé, lecture seule", MSG_LECTURE_SEULE); journal(MSG_LECTURE_SEULE); }
+  if (e && (e.code === "invalid_argument" || e.code === "permission-denied")) { PARTAGE.lectureSeule = true; statutPartage("lecture", "Partagé, lecture seule", MSG_LECTURE_SEULE); journal(MSG_LECTURE_SEULE); }
   else if (e && e.code === "quota_exceeded") journal("La base partagée est pleine : supprime des pistes ou des algorithmes inutiles.");
   else journal("Enregistrement partagé impossible pour l'instant, nouvel essai à la prochaine modification.");
 }
@@ -4246,11 +4247,59 @@ function partageSupprimerPiste(m) {
     .then(() => { msg.textContent = `« ${m.nom} » a été supprimée pour tout le monde.`; })
     .catch(erreurEcriture);
 }
-// ---- démarrage : seulement quand la page est servie par claude.ai
+// ---- version GitHub Pages (ou fichier ouvert seul) : base Firestore du projet Firebase « le-simulateur-covapsy »
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD6nevnOEVdRI0AlWK6gqatcDbSFCLiBYI",
+  authDomain: "le-simulateur-covapsy.firebaseapp.com",
+  projectId: "le-simulateur-covapsy",
+  storageBucket: "le-simulateur-covapsy.firebasestorage.app",
+  messagingSenderId: "642445260446",
+  appId: "1:642445260446:web:408afa0e904bfe5b87ad8f",
+};
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+function lirePseudo() { try { return (localStorage.getItem("covapsy_pseudo") || "").trim(); } catch (e) { return ""; } }
+function majPastillePseudo() {
+  if (PARTAGE.mode !== "firebase" || PARTAGE.lectureSeule) return;
+  statutPartage("enLigne", PARTAGE.uid ? "Partagé, " + PARTAGE.uid : "Partagé, choisis ton pseudo",
+    "Tes algorithmes et tes pistes enregistrées sont partagés en direct avec tous ceux qui ouvrent ce site. Clique pour changer ton pseudo.");
+}
+function demanderPseudo() {
+  const p = prompt("Ton pseudo (il s'affiche chez tes potes quand tu modifies quelque chose) :", PARTAGE.uid || "");
+  if (p === null) return;
+  PARTAGE.uid = p.trim().slice(0, 24);
+  try { localStorage.setItem("covapsy_pseudo", PARTAGE.uid); } catch (e) { /* rien */ }
+  majPastillePseudo();
+}
+async function initFirebase() {
+  let F;
+  statutPartage("", "Connexion au partage…", "Connexion à la base partagée");
+  try {
+    const [A, S] = await Promise.all([import(FIREBASE_SDK + "firebase-app.js"), import(FIREBASE_SDK + "firebase-firestore.js")]);
+    F = { ...A, ...S };
+  } catch (e) {
+    statutPartage("horsLigne", "Partage injoignable", "Impossible de charger Firebase (pas d'internet ?). Tes enregistrements restent dans ce navigateur.");
+    return;
+  }
+  const fs = F.getFirestore(F.initializeApp(FIREBASE_CONFIG));
+  const db = {
+    collection: (n) => ({ onSnapshot: (next, err) => F.onSnapshot(F.collection(fs, n), next, err) }),
+    doc: (p) => ({ set: (d) => F.setDoc(F.doc(fs, p), d), delete: () => F.deleteDoc(F.doc(fs, p)) }),
+  };
+  PARTAGE.mode = "firebase"; PARTAGE.db = db; PARTAGE.uid = lirePseudo(); PARTAGE.actif = true;
+  const pastille = document.getElementById("statutPartage");
+  pastille.style.cursor = "pointer"; pastille.addEventListener("click", demanderPseudo);
+  const attente = setTimeout(() => statutPartage("horsLigne", "Partage injoignable", "La base partagée ne répond pas : ce que tu vois peut ne pas être à jour."), 10000);
+  const pret = (snap) => { if (snap.metadata && snap.metadata.fromCache) return; clearTimeout(attente); if (PARTAGE.lectureSeule) statutPartage("lecture", "Partagé, lecture seule", MSG_LECTURE_SEULE); else majPastillePseudo(); };
+  const perdu = (e) => { clearTimeout(attente); statutPartage("horsLigne", "Partage coupé", "La connexion au partage s'est arrêtée (" + ((e && e.code) || "erreur") + "). Recharge la page."); };
+  db.collection("algos").onSnapshot((snap) => { recevoirAlgos(snap); pret(snap); }, perdu);
+  db.collection("pistes").onSnapshot((snap) => { recevoirPistes(snap); pret(snap); }, perdu);
+  if (!document.getElementById("pagePistes").hidden) afficherPistes();
+}
+// ---- démarrage : base de claude.ai si la page y est publiée, sinon Firebase
 async function initPartage() {
   let essais = 0;
   while (!(window.claude && typeof window.claude.use === "function")) {
-    if (++essais > 10) return;                    // fichier ouvert seul : enregistrement local
+    if (++essais > 10) { initFirebase(); return; }
     await new Promise(r => setTimeout(r, 300));
   }
   let db = null;
