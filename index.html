@@ -1057,7 +1057,13 @@
     </section>
     <aside class="bloc aideCode">
       <h3>Écrire son code</h3>
-      <p class="aide">Dans le menu « Algorithme », choisis <b>+ Créer un algorithme…</b> et donne-lui le nom que tu veux. Il apparaît ensuite dans « Mes algorithmes » pour toutes les voitures : plusieurs voitures peuvent utiliser le même. Tu peux l'écrire en <b>Python</b> (le même langage que sur la vraie voiture et dans Webots) ou en JavaScript. Le code est appelé toutes les 32 ms, comme une boucle <code>while driver.step() != -1</code> dans Webots : c'est le contenu de la boucle, pas besoin de l'écrire.</p>
+      <p class="aide">Dans le menu « Algorithme », choisis <b>+ Créer un algorithme…</b> et donne-lui le nom que tu veux. Il apparaît ensuite dans « Mes algorithmes » pour toutes les voitures : plusieurs voitures peuvent utiliser le même. Tu peux l'écrire en <b>Python</b> (le même langage que sur la vraie voiture et dans Webots) ou en JavaScript. En Python simple, le code est appelé toutes les 32 ms, comme une boucle <code>while driver.step() != -1</code> dans Webots : c'est le contenu de la boucle, pas besoin de l'écrire.</p>
+      <h3>Comme dans Webots</h3>
+      <ul>
+        <li>Choisis le langage <b>Python Webots</b> : tu écris exactement le même fichier que dans Webots (<code>from vehicle import Driver</code>, <code>Lidar("RpLidarA2")</code>, <code>while driver.step() != -1:</code>), et tu le copies tel quel d'un outil à l'autre.</li>
+        <li>Chaque <code>driver.step()</code> avance la simulation de 32 ms. <code>getRangeImage()</code>, <code>getCurrentSpeed()</code>, <code>setCruisingSpeed()</code>, <code>setSteeringAngle()</code>, <code>getTime()</code> et le clavier marchent comme dans Webots (la touche A est appuyée au départ).</li>
+        <li><code>print(...)</code> s'affiche dans le journal. <code>numpy</code> est disponible (chargé la première fois qu'un programme l'importe).</li>
+      </ul>
       <h3>En Python</h3>
       <ul>
         <li>Les variables normales repartent de zéro à chaque appel. Pour garder une valeur, utilise le dictionnaire <code>memoire</code> : <code>memoire["compteur"] = memoire.get("compteur", 0) + 1</code>.</li>
@@ -1092,7 +1098,7 @@
     <h2 id="titreAlgo">Nouvel algorithme</h2>
     <div id="champsAlgo">
       <label class="champ" for="nomAlgo">Nom<input id="nomAlgo" type="text" maxlength="40" placeholder="Par exemple : Suivi de mur rapide"></label>
-      <label class="champ" for="langueAlgo" id="ligneLangue">Langage<select id="langueAlgo"><option value="py">Python (comme sur la vraie voiture)</option><option value="js">JavaScript</option></select></label>
+      <label class="champ" for="langueAlgo" id="ligneLangue">Langage<select id="langueAlgo"><option value="wb">Python Webots (le même fichier que dans Webots)</option><option value="py">Python (juste le programme étudiant)</option><option value="js">JavaScript</option></select></label>
       <label class="champ" for="baseAlgo" id="ligneBase">Partir de<select id="baseAlgo"></select></label>
     </div>
     <p id="texteAlgo" class="aide"></p>
@@ -1360,7 +1366,7 @@ function ramenerAuDepart() {
 function relancerAlgo(i) {
   const v = voitures[i];
   if (!v) return;
-  if (v.algo instanceof AlgoPersoPy && PY.fn) try { PY.fn.oublier(v.algo.id); } catch (e) { /* rien */ }
+  if (v.algo instanceof AlgoPersoPy && PY.fn) try { PY.fn.oublier(v.algo.id); PY.fn.oublierWb(v.algo.id); } catch (e) { /* rien */ }
   v.algo = creerAlgo(v.def.algo, v.def);
   v.repere = { x: v.x, y: v.y, a: v.th };
   v.trajPrevue = null;
@@ -1712,6 +1718,9 @@ class AlgoReactif {       // réactif amélioré
 // ---------- Python dans le navigateur (Pyodide) : chargé seulement si une voiture a un algorithme en Python
 const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
 const PY_AIDE = "import math, random\n_voitures = {}\n\ndef _compiler(src):\n    src = src.replace(\"\\t\", \"    \")\n    corps = \"\\n\".join(\"    \" + l for l in src.split(\"\\n\")) if src.strip() else \"    pass\"\n    return compile(\"def _pas():\\n\" + corps + \"\\n\", \"ton_code\", \"exec\")\n\ndef _erreur(e):\n    n = None\n    if isinstance(e, SyntaxError):\n        n, msg = e.lineno, e.msg\n    else:\n        msg = str(e)\n        tb = e.__traceback__\n        while tb is not None:\n            if tb.tb_frame.f_code.co_filename == \"ton_code\":\n                n = tb.tb_lineno\n            tb = tb.tb_next\n    ligne = f\"ligne {n - 1} : \" if n and n > 1 else \"\"\n    return f\"{ligne}{type(e).__name__} : {msg}\"\n\nclass _Voiture:\n    def __init__(self, src):\n        self.vit = 0.0\n        self.dir = 0.0\n        self.ns = {\"__name__\": \"ton_code\", \"math\": math, \"random\": random, \"memoire\": {},\n                   \"set_vitesse_m_s\": self._vitesse, \"set_direction_degre\": self._direction}\n        exec(_compiler(src), self.ns)\n\n    def _vitesse(self, v):\n        self.vit = float(v)\n\n    def _direction(self, a):\n        self.dir = float(a)\n\ndef verifier(src):\n    try:\n        _compiler(src)\n        return \"\"\n    except Exception as e:\n        return _erreur(e)\n\ndef nouvelle(i, src):\n    try:\n        _voitures[int(i)] = _Voiture(src)\n        return \"\"\n    except Exception as e:\n        return _erreur(e)\n\ndef oublier(i):\n    _voitures.pop(int(i), None)\n\ndef pas_voiture(i, t, temps, vitesse, ultrason, inverse):\n    v = _voitures[int(i)]\n    ns = v.ns\n    try:\n        tab = list(t.to_py())\n    except Exception:\n        tab = list(t)\n    ns[\"tableau_lidar_mm\"] = [round(d) for d in tab]\n    ns[\"temps\"] = temps\n    ns[\"vitesse_actuelle\"] = vitesse\n    ns[\"ultrason_arriere_mm\"] = round(ultrason)\n    ns[\"sens_inverse\"] = bool(inverse)\n    try:\n        ns[\"_pas\"]()\n        err = \"\"\n    except Exception as e:\n        err = _erreur(e)\n    return f\"{v.vit!r}|{v.dir!r}|{err}\"\n";
+const PY_WEBOTS = "import ast, math, sys, types\n\n# ---- Contrôleurs Webots complets dans le simulateur.\n# Le programme est exécuté tel quel ; chaque driver.step() rend la main au simulateur pour un pas (32 ms),\n# puis le programme reprend avec les nouvelles mesures. (Technique : le programme est transformé en\n# générateur Python, driver.step() devient un « yield ».)\n_wb = {}\n_courant = [None]\n\n\nclass _EtatVoiture:\n    def __init__(self, nom):\n        self.nom = nom\n        self.temps = 0.0\n        self.vitesse = 0.0      # m/s\n        self.braq = 0.0         # rad, positif à gauche\n        self.ultrason = math.inf\n        self.lidar = [math.inf] * 360\n        self.vit = 0.0          # consigne m/s\n        self.dir = 0.0          # consigne degrés, positif à gauche\n        self.touches = [ord(\"A\")]   # « A » appuyé au départ : le mode auto du programme de base démarre tout seul\n        self.trace = None\n        self.sorties = []\n        self.fini = False\n\n\ndef _etat():\n    if _courant[0] is None:\n        raise RuntimeError(\"appareil Webots créé en dehors du contrôleur\")\n    return _courant[0]\n\n\nclass Keyboard:\n    END, HOME, LEFT, UP, RIGHT, DOWN = 312, 313, 314, 315, 316, 317\n    SHIFT, CONTROL, ALT = 65536, 131072, 262144\n\n    def __init__(self, *a):\n        self.v = _etat()\n\n    def enable(self, *a): pass\n    def disable(self): pass\n\n    def getKey(self):\n        return self.v.touches.pop(0) if self.v.touches else -1\n\n\nclass Lidar:\n    def __init__(self, nom=\"RpLidarA2\", *a):\n        self.v = _etat()\n        self.nom = nom\n\n    def enable(self, *a): pass\n    def disable(self): pass\n    def enablePointCloud(self): pass\n    def disablePointCloud(self): pass\n    def getRangeImage(self): return list(self.v.lidar)\n    def getHorizontalResolution(self): return 360\n    def getNumberOfLayers(self): return 1\n    def getFov(self): return 2 * math.pi\n    def getMaxRange(self): return 12.0\n    def getMinRange(self): return 0.15\n    def getSamplingPeriod(self): return 32\n    def getName(self): return self.nom\n\n\nclass DistanceSensor:\n    \"\"\"Capteur à ultrasons arrière : getValue() donne la distance en mètres (inf si rien).\"\"\"\n    def __init__(self, nom=\"ultrason\", *a):\n        self.v = _etat()\n        self.nom = nom\n\n    def enable(self, *a): pass\n    def disable(self): pass\n    def getValue(self): return self.v.ultrason\n    def getName(self): return self.nom\n\n\nclass Driver:\n    def __init__(self, *a):\n        self.v = _etat()\n        self._clavier = None\n\n    def getBasicTimeStep(self): return 32\n    def step(self, *a):\n        raise RuntimeError(\"driver.step() doit être appelé dans le contrôleur principal\")\n    def getTime(self): return self.v.temps\n    def getName(self): return self.v.nom\n    def setCruisingSpeed(self, kmh): self.v.vit = float(kmh) / 3.6\n    def getTargetCruisingSpeed(self): return self.v.vit * 3.6\n    def getCurrentSpeed(self): return self.v.vitesse * 3.6\n    def setSteeringAngle(self, a): self.v.dir = -math.degrees(float(a))\n    def getSteeringAngle(self): return -self.v.braq\n    def setBrakeIntensity(self, *a): pass\n    def setGear(self, *a): pass\n    def setThrottle(self, *a): pass\n    def setHazardFlashers(self, *a): pass\n    def setIndicator(self, *a): pass\n    def getKeyboard(self):\n        if self._clavier is None:\n            self._clavier = Keyboard()\n        return self._clavier\n    def getDevice(self, nom):\n        return Lidar(nom) if \"idar\" in nom.lower() else DistanceSensor(nom)\n    def afficherTrace(self, pts):            # uniquement dans le simulateur : dessine la trajectoire\n        self.v.trace = [[float(p[0]), float(p[1])] for p in pts]\n\n\nRobot = Car = Driver\nsys.modules[\"vehicle\"] = types.SimpleNamespace(Driver=Driver, Car=Car)\nsys.modules[\"controller\"] = types.SimpleNamespace(Lidar=Lidar, Robot=Robot, Keyboard=Keyboard, DistanceSensor=DistanceSensor,\n                                                   Supervisor=Robot)\n\n\ndef est_webots(src):\n    for l in src.split(\"\\n\"):\n        l = l.strip()\n        if l.startswith((\"from vehicle\", \"from controller\", \"import vehicle\", \"import controller\")):\n            return True\n    return False\n\n\ndef _noms_module(corps):\n    \"\"\"Noms liés au niveau du module (ils deviennent globaux dans la fonction qui enveloppe le programme).\"\"\"\n    noms = set()\n\n    class V(ast.NodeVisitor):\n        def visit_FunctionDef(self, n): noms.add(n.name)\n        def visit_AsyncFunctionDef(self, n): noms.add(n.name)\n        def visit_ClassDef(self, n): noms.add(n.name)\n        def visit_Lambda(self, n): pass\n        def visit_ListComp(self, n): pass\n        def visit_SetComp(self, n): pass\n        def visit_DictComp(self, n): pass\n        def visit_GeneratorExp(self, n): pass\n        def visit_Name(self, n):\n            if isinstance(n.ctx, (ast.Store, ast.Del)):\n                noms.add(n.id)\n        def visit_Import(self, n):\n            for a in n.names:\n                noms.add((a.asname or a.name).split(\".\")[0])\n        def visit_ImportFrom(self, n):\n            for a in n.names:\n                if a.name != \"*\":\n                    noms.add(a.asname or a.name)\n        def visit_Global(self, n):\n            noms.update(n.names)\n    for s in corps:\n        V().visit(s)\n    return noms\n\n\ndef _transformer(src):\n    arbre = ast.parse(src.replace(\"\\t\", \"    \"), \"ton_code\")\n\n    class Step(ast.NodeTransformer):\n        def visit_Call(self, n):\n            self.generic_visit(n)\n            if isinstance(n.func, ast.Attribute) and n.func.attr == \"step\":\n                return ast.copy_location(ast.Yield(value=ast.Constant(0)), n)\n            return n\n    arbre = Step().visit(arbre)\n\n    def a_yield(f):\n        pile = list(f.body)\n        while pile:\n            x = pile.pop()\n            if isinstance(x, (ast.Yield, ast.YieldFrom)):\n                return True\n            if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):\n                continue\n            pile.extend(ast.iter_child_nodes(x))\n        return False\n\n    fonctions = [f for f in ast.walk(arbre) if isinstance(f, ast.FunctionDef)]\n    attend = {f.name for f in fonctions if a_yield(f)}\n    change = True\n    while change:            # une fonction qui appelle une fonction qui attend attend aussi\n        change = False\n        for f in fonctions:\n            if f.name in attend:\n                continue\n            for x in ast.walk(f):\n                if isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id in attend:\n                    attend.add(f.name)\n                    change = True\n                    break\n\n    class Appels(ast.NodeTransformer):\n        def visit_Call(self, n):\n            self.generic_visit(n)\n            if isinstance(n.func, ast.Name) and n.func.id in attend:\n                return ast.copy_location(ast.YieldFrom(value=n), n)\n            return n\n    arbre = Appels().visit(arbre)\n    noms = sorted(_noms_module(arbre.body))\n    corps = ([ast.Global(names=noms)] if noms else []) + arbre.body + [ast.Return(value=None)]\n    if not any(isinstance(x, (ast.Yield, ast.YieldFrom)) for x in ast.walk(ast.Module(body=arbre.body, type_ignores=[]))):\n        corps.insert(len(corps) - 1, ast.Expr(value=ast.Yield(value=ast.Constant(0))))\n    module = ast.parse(\"def _controleur():\\n    pass\\n\")\n    module.body[0].body = corps\n    ast.fix_missing_locations(module)\n    for x in ast.walk(module):\n        if not hasattr(x, \"lineno\"):\n            continue\n        if x.lineno < 1:\n            x.lineno = 1\n    return compile(module, \"ton_code\", \"exec\")\n\n\ndef _erreur_wb(e):\n    n = None\n    if isinstance(e, SyntaxError):\n        n, msg = e.lineno, e.msg\n    else:\n        msg = str(e)\n        tb = e.__traceback__\n        while tb is not None:\n            if tb.tb_frame.f_code.co_filename == \"ton_code\":\n                n = tb.tb_lineno\n            tb = tb.tb_next\n    return (f\"ligne {n} : \" if n else \"\") + f\"{type(e).__name__} : {msg}\"\n\n\ndef verifier_wb(src):\n    try:\n        _transformer(src)\n        return \"\"\n    except Exception as e:\n        return _erreur_wb(e)\n\n\ndef nouvelle_wb(i, src, nom):\n    try:\n        code = _transformer(src)\n        v = _EtatVoiture(nom)\n        ns = {\"__name__\": \"__main__\"}\n\n        def _print(*args, sep=\" \", end=\"\\n\", **k):\n            v.sorties.append(sep.join(str(a) for a in args))\n        ns[\"print\"] = _print\n        exec(code, ns)\n        v.gen = ns[\"_controleur\"]()\n        v.demarre = False\n        _wb[int(i)] = v\n        return \"\"\n    except Exception as e:\n        return _erreur_wb(e)\n\n\ndef oublier_wb(i):\n    _wb.pop(int(i), None)\n\n\ndef pas_wb(i, lidar, temps, vitesse, braq, ultrason):\n    \"\"\"Un pas du simulateur : on met à jour les mesures, puis le programme avance jusqu'au prochain driver.step().\"\"\"\n    v = _wb[int(i)]\n    try:\n        v.lidar = list(lidar.to_py())\n    except Exception:\n        v.lidar = list(lidar)\n    v.temps, v.vitesse, v.braq = float(temps), float(vitesse), float(braq)\n    v.ultrason = float(ultrason) if ultrason > 0 else math.inf\n    err = \"\"\n    if not v.fini:\n        _courant[0] = v\n        try:\n            if not v.demarre:\n                v.demarre = True\n                next(v.gen)\n            else:\n                v.gen.send(0)\n        except StopIteration:\n            v.fini = True\n        except Exception as e:\n            err = _erreur_wb(e)\n        finally:\n            _courant[0] = None\n    sorties = \"\\n\".join(v.sorties[-10:])\n    v.sorties = []\n    return f\"{v.vit!r}|{v.dir!r}|{err}|{sorties}\"\n\n\ndef trace_wb(i):\n    v = _wb.get(int(i))\n    if v is None or v.trace is None:\n        return \"\"\n    import json\n    t, v.trace = v.trace, None\n    return json.dumps(t)\n";
+// un programme qui importe vehicle ou controller est un contrôleur Webots complet, exécuté tel quel
+const estWebots = (src) => /^\s*(from|import)\s+(vehicle|controller)\b/m.test(src || "");
 const PY = { etat: "absent", fn: null, erreur: "", promesse: null, sorties: 0, seconde: 0 };
 function chargerPython() {
   if (PY.promesse) return PY.promesse;
@@ -1732,8 +1741,12 @@ function chargerPython() {
         if (++PY.sorties <= 10) journal("[print] " + txt);
       } });
       p.runPython(PY_AIDE);
+      p.runPython(PY_WEBOTS);
+      PY.p = p;
       PY.fn = { nouvelle: p.globals.get("nouvelle"), pas: p.globals.get("pas_voiture"),
-                verifier: p.globals.get("verifier"), oublier: p.globals.get("oublier") };
+                verifier: p.globals.get("verifier"), oublier: p.globals.get("oublier"),
+                nouvelleWb: p.globals.get("nouvelle_wb"), pasWb: p.globals.get("pas_wb"), verifierWb: p.globals.get("verifier_wb"),
+                oublierWb: p.globals.get("oublier_wb"), traceWb: p.globals.get("trace_wb") };
       PY.etat = "pret";
       journal("Python est prêt.");
     } catch (e) {
@@ -1758,6 +1771,7 @@ class AlgoPersoPy {
     if (PY.etat !== "pret") chargerPython();
   }
   pas(api) {
+    if (estWebots(this.src)) return this.pasWebots(api);
     if (!this.pret && !this.erreur) {
       if (PY.etat === "pret") {
         const e = PY.fn.nouvelle(this.id, this.src);
@@ -1781,6 +1795,48 @@ class AlgoPersoPy {
     api.commander(this.vit, this.dir);
   }
 }
+
+// contrôleur Webots complet : chaque driver.step() du programme avance d'un pas du simulateur (32 ms)
+AlgoPersoPy.prototype.pasWebots = function (api) {
+  if (!this.pret && !this.erreur) {
+    if (PY.etat === "pret") {
+      // numpy : chargé une seule fois, seulement si le programme en a besoin
+      if (/\bnumpy\b/.test(this.src) && !PY.numpy) {
+        if (!PY.numpyPromesse) {
+          this.phase = "Chargement de numpy…";
+          PY.numpyPromesse = PY.p.loadPackage("numpy").then(() => { PY.numpy = true; journal("numpy est prêt."); })
+            .catch(e => { PY.numpyErreur = "numpy n'a pas pu être chargé : " + e.message; journal(PY.numpyErreur); });
+        }
+        if (PY.numpyErreur) { this.erreur = PY.numpyErreur; this.phase = "Python indisponible"; }
+        api.commander(0, 0); return;
+      }
+      const e = PY.fn.nouvelleWb(this.id, this.src, this.nom);
+      this.attente = false;
+      if (e) { this.erreur = "Erreur dans le code : " + e; this.phase = "Code en erreur"; api.log(this.erreur); }
+      else { this.pret = true; this.phase = this.nom; }
+    } else if (PY.etat === "erreur") { this.attente = false; this.erreur = PY.erreur; this.phase = "Python indisponible"; }
+  }
+  if (!this.pret || this.erreur) { api.commander(0, 0); return; }
+  const r = String(PY.fn.pasWb(this.id, api.brut, api.temps, api.vitesse, api.braquage || 0, isFinite(api.ultrason) ? api.ultrason : 0));
+  const i1 = r.indexOf("|"), i2 = r.indexOf("|", i1 + 1), i3 = r.indexOf("|", i2 + 1);
+  this.vit = +r.slice(0, i1) || 0; this.dir = +r.slice(i1 + 1, i2) || 0;
+  const err = r.slice(i2 + 1, i3), sorties = r.slice(i3 + 1);
+  if (sorties) {    // les print() du programme vont dans le journal (au plus 10 lignes par seconde)
+    const s = Math.floor(performance.now() / 1000);
+    if (s !== PY.seconde) { PY.seconde = s; PY.sorties = 0; }
+    for (const l of sorties.split("\n")) if (l && ++PY.sorties <= 10) api.log(l);
+  }
+  if (err) {
+    this.erreur = `Erreur pendant l'exécution à t = ${api.temps.toFixed(1)} s, ${err}`;
+    this.pret = false; this.phase = "Code en erreur"; api.log(this.erreur);
+    try { PY.fn.oublierWb(this.id); } catch (e) { /* rien */ }
+    api.commander(0, 0); return;
+  }
+  // driver.afficherTrace(points) : la trajectoire calculée par le programme est dessinée sur la piste
+  const tr = String(PY.fn.traceWb(this.id));
+  if (tr) { try { api.afficherTrace(JSON.parse(tr)); } catch (e) { /* rien */ } }
+  api.commander(this.vit, this.dir);
+};
 
 class AlgoAxelLucas {    // code d'Axel et Lucas (secteurs de 5°, on vise le secteur le plus dégagé)
   constructor() { this.t = new Float64Array(360); this.moy = new Float64Array(72); this.vit = 0; this.ang = 0; this.phase = "Axel / Lucas"; }
@@ -3656,7 +3712,7 @@ function afficherCode() {
   const enPython = !!(a && a.lang === "py");
   const bJs = document.getElementById("langJs"), bPy = document.getElementById("langPy");
   bJs.textContent = enPython ? "Mon code (Python)" : "JavaScript (simulateur)";
-  bPy.textContent = enPython ? "Fichier Webots complet" : "Python (Webots)";
+  bPy.textContent = enPython ? (estWebots(a.code) ? "Pour Webots" : "Fichier Webots complet") : "Python (Webots)";
   bJs.classList.toggle("actif", codeLang === "js");
   bPy.classList.toggle("actif", codeLang === "py");
   let info;
@@ -3665,8 +3721,13 @@ function afficherCode() {
     elTexte.readOnly = !perso || !a;
     info = perso ? `« ${a ? a.nom : "?"} », ton algorithme en ${enPython ? "Python" : "JavaScript"}, utilisé par ${nbUtil} voiture${nbUtil > 1 ? "s" : ""}. Il est enregistré au fur et à mesure ; « Appliquer » relance les voitures qui l'utilisent.`
       : "Code de l'algorithme intégré, en lecture seule." + (COPIES[d.algo] ? " « Modifier une copie de ce code » en fait un de tes algorithmes en Python, que tu peux changer et renommer." : "");
+    if (enPython && a && estWebots(a.code)) info += " C'est un contrôleur Webots complet : il tourne ici comme dans Webots, chaque driver.step() avance de 32 ms.";
     if (enPython) info += PY.etat === "chargement" ? " Python se charge (une dizaine de Mo la première fois, puis c'est gardé en cache)…"
       : PY.etat === "erreur" ? " " + PY.erreur : "";
+  } else if (enPython && estWebots(a.code)) {
+    elTexte.value = a.code;
+    elTexte.readOnly = true;
+    info = `Ton code est déjà un contrôleur Webots complet : copie-le tel quel dans controllers/${a.nom.normalize("NFD").replace(/[^\w]/g, "").toLowerCase() || "mon_controleur"}/ (fichier .py du même nom).`;
   } else if (enPython) {
     elTexte.value = pythonWebots(a.code, a.nom);
     elTexte.readOnly = true;
@@ -3698,7 +3759,7 @@ function appliquerCode() {
       chargerPython().then(() => { if (PY.etat === "pret") appliquerCode(); else { erreurCode(PY.erreur); msgCode(""); } });
       return false;
     }
-    const e = PY.fn.verifier(a.code);
+    const e = estWebots(a.code) ? PY.fn.verifierWb(a.code) : PY.fn.verifier(a.code);
     if (e) { erreurCode("Erreur dans le code : " + e); msgCode(""); return false; }
   } else {
     try { compilerCode(a.code); }
@@ -3778,17 +3839,13 @@ function ouvrirFenetreAlgo(mode) {
   document.getElementById("champsAlgo").hidden = mode === "supprimer";
   document.getElementById("ligneBase").hidden = mode !== "creer";
   document.getElementById("ligneLangue").hidden = mode !== "creer";
-  if (mode === "creer") document.getElementById("langueAlgo").value = "py";
+  if (mode === "creer") document.getElementById("langueAlgo").value = "wb";
   const titre = document.getElementById("titreAlgo"), bt = document.getElementById("btValiderAlgo"), txt = document.getElementById("texteAlgo");
   bt.classList.toggle("danger", mode === "supprimer");
   if (mode === "creer") {
     titre.textContent = "Nouvel algorithme"; bt.textContent = "Créer"; champNom.value = "";
     txt.textContent = d ? `Il sera utilisé par ${d.nom}. Tu pourras ensuite le choisir pour n'importe quelle voiture.` : "";
-    champBase.innerHTML = "";
-    champBase.appendChild(new Option("L'exemple simple (suivi des murs)", "exemple"));
-    champBase.appendChild(new Option("Une page vide", "vide"));
-    if (d && (COPIES[d.algo] || a)) champBase.appendChild(new Option("Une copie de « " + libelleAlgo(d.algo) + " »", "copie"));
-    champBase.value = "exemple";
+    remplirBases();
   } else if (mode === "renommer") {
     titre.textContent = "Renommer l'algorithme"; bt.textContent = "Renommer"; champNom.value = a ? a.nom : "";
     txt.textContent = "";
@@ -3801,6 +3858,49 @@ function ouvrirFenetreAlgo(mode) {
   fen.hidden = false;
   setTimeout(() => (mode === "supprimer" ? bt : champNom).focus(), 0);
 }
+// choix « Partir de » selon le langage
+function remplirBases() {
+  const d = piste.voitures[codeVoiture], a = d && algoPerso(d.algo), lang = document.getElementById("langueAlgo").value;
+  champBase.innerHTML = "";
+  if (lang === "wb") {
+    champBase.appendChild(new Option("Le programme de base CoVAPSy (Webots)", "wb_base"));
+    champBase.appendChild(new Option("Le réactif amélioré (Webots)", "wb_reactif"));
+    champBase.appendChild(new Option("La violette : repérage puis course (Webots, numpy)", "wb_course"));
+    champBase.appendChild(new Option("Un contrôleur vide (Driver, Lidar et la boucle)", "wb_vide"));
+    if (a && a.lang === "py" && estWebots(a.code)) champBase.appendChild(new Option("Une copie de « " + a.nom + " »", "copie"));
+    champBase.value = "wb_base";
+    return;
+  }
+  champBase.appendChild(new Option("L'exemple simple (suivi des murs)", "exemple"));
+  champBase.appendChild(new Option("Une page vide", "vide"));
+  if (d && (COPIES[d.algo] || a)) champBase.appendChild(new Option("Une copie de « " + libelleAlgo(d.algo) + " »", "copie"));
+  champBase.value = "exemple";
+}
+document.getElementById("langueAlgo").addEventListener("change", remplirBases);
+const CODE_VIDE_WB = `from vehicle import Driver
+from controller import Lidar
+
+driver = Driver()
+basicTimeStep = int(driver.getBasicTimeStep())
+
+lidar = Lidar("RpLidarA2")
+lidar.enable(4 * basicTimeStep)
+
+tableau_lidar_mm = [0] * 360
+
+while driver.step() != -1:
+    # tableau_lidar_mm[i] = distance en mm à i degrés (sens trigo, 0 = devant, -60 = à droite)
+    brut = lidar.getRangeImage()
+    for i in range(360):
+        d = brut[-i]
+        tableau_lidar_mm[i] = 1000 * d if 0 < d < 20 else 0
+
+    # ton programme ici
+    angle_degre = 0.02 * (tableau_lidar_mm[60] - tableau_lidar_mm[-60])   # positif = gauche
+    angle_degre = max(-16, min(16, angle_degre))
+    driver.setSteeringAngle(-angle_degre * 3.1416 / 180)                  # Webots : positif = droite
+    driver.setCruisingSpeed(0.5 * 3.6)                                     # km/h
+`;
 function fermerFenetreAlgo() { fen.hidden = true; }
 function validerFenetreAlgo() {
   const d = piste.voitures[codeVoiture], a = d && algoPerso(d.algo);
@@ -3812,9 +3912,10 @@ function validerFenetreAlgo() {
       err.textContent = "Ce nom est déjà utilisé : choisis-en un autre."; champNom.focus(); return;
     }
     if (modeFenetre === "creer") {
-      const base = champBase.value, lang = document.getElementById("langueAlgo").value;
+      const base = champBase.value, choix = document.getElementById("langueAlgo").value, lang = choix === "wb" ? "py" : choix;
       let code;
-      if (base === "copie" && a && (a.lang || "js") === lang) code = a.code;
+      if (choix === "wb") code = base === "copie" && a ? a.code : base === "wb_vide" ? CODE_VIDE_WB : SRC_PY[base.slice(3)];
+      else if (base === "copie" && a && (a.lang || "js") === lang) code = a.code;
       else if (base === "copie" && !a) code = (lang === "py" ? COPIES_PY : COPIES)[d.algo];
       else if (base === "vide") code = lang === "py" ? CODE_VIDE_PY : "// Écris ton code ici\nset_vitesse_m_s(0.5);\nset_direction_degre(0);\n";
       else code = lang === "py" ? CODE_DEFAUT_PY : CODE_DEFAUT;
